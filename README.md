@@ -56,6 +56,25 @@ Think of it as a **personal runbook + public knowledge base**. Bookmark a note o
 | --- | --- | --- | --- |
 | [Google Docs HTML formatting](ai-prompts/google-docs-html-formatting/) | Universal AI prompt that converts any HTML file into a layout that pastes cleanly into Google Docs (proper headings, lists, tables, code blocks). Trigger phrase: `apply doc formatting`. | Cursor (`.mdc`), Claude Code (`SKILL.md`), ChatGPT, Gemini, any LLM | stable |
 
+### Cloud — AWS
+
+| Note | What you'll set up | Tested with | Status |
+| --- | --- | --- | --- |
+| [SES — CloudWatch logging setup](cloud/aws/ses-cloudwatch-logging-setup-guide.md) | Per-email SES visibility (bounce / complaint / delivery) via SES → SNS → Lambda → CloudWatch. Drop-in CloudFormation template, deployed three times. Catches reputation problems **before** AWS enforces a SHUTDOWN. | SES + Lambda Python 3.12, CloudFormation, AWS CloudShell | stable |
+
+### Cloud — GCP
+
+| Note | What you'll set up | Tested with | Status |
+| --- | --- | --- | --- |
+| [GCS bucket — public file access & security](cloud/gcp/gcs-bucket-public-access-and-security-guide.md) | Make GCS files **publicly readable by URL** but the bucket **not listable**. Includes a Cloud Function (Gen 2, Python) that auto-applies public-read ACL on every new upload. | GCS, Cloud Functions Gen 2, Eventarc | stable |
+
+### Kubernetes
+
+| Note | What you'll set up | Cluster | Status |
+| --- | --- | --- | --- |
+| [GKE RBAC — DevOps user access setup](kubernetes/gke-rbac-devops-user-access-guide.md) | Custom `ClusterRole` + `ClusterRoleBinding` granting operational (port-forward, log view, exec, restart, Helm uninstall) access **without** giving full admin or app-creation rights. Includes a complete RBAC parameter reference for extending. | GKE | stable |
+| [GKE + AccuKnox CNAPP — integration & onboarding](kubernetes/gke-accuknox-cnapp-integration-guide.md) | End-to-end onboarding of a GKE cluster to AccuKnox CNAPP — IAM, custom role, VPC egress firewall (the #1 failure point), KubeArmor + agents via Helm, multi-cluster, GAR image scanning, real troubleshooting. | GKE | stable |
+
 ### Linux
 
 | Note | What you'll set up | Tested on | Status |
@@ -67,6 +86,7 @@ Think of it as a **personal runbook + public knowledge base**. Bookmark a note o
 | Note | What you'll learn | Audience | Status |
 | --- | --- | --- | --- |
 | [Cursor — Rules setup & reference guide](tools/cursor/rules-setup-guide.md) | What Cursor Rules are, global vs project rules, file format, plus 6 drop-in `.mdc` rules (commit format, K8s, Docker, shell, security, GCP CLI). Files in [`tools/cursor/rules/`](tools/cursor/rules/). | Cursor IDE users | stable |
+| [GitHub — Org-owned GitHub App for CI/CD](tools/github/org-github-app-for-cicd-setup-guide.md) | Replace personal PATs / "service-user accounts" with an org-owned GitHub App that mints short-lived installation tokens. Includes the migration playbook for centralized reusable workflows + bulk-update of downstream app repos. | Platform / DevOps engineers, GitHub org admins | stable |
 
 *More notes will be added here as they're published. The order inside each section is alphabetical.*
 
@@ -92,25 +112,42 @@ tech-notes/
 │           ├── cursor.mdc             ← Cursor wrapper (with frontmatter)
 │           └── claude-skill.md        ← Claude Code skill wrapper
 │
+├── cloud/                             ← public-cloud-specific guides
+│   ├── README.md
+│   ├── aws/
+│   │   ├── README.md
+│   │   └── ses-cloudwatch-logging-setup-guide.md
+│   └── gcp/
+│       ├── README.md
+│       └── gcs-bucket-public-access-and-security-guide.md
+│
+├── kubernetes/                        ← K8s installs, RBAC, security integrations
+│   ├── README.md
+│   ├── gke-rbac-devops-user-access-guide.md
+│   └── gke-accuknox-cnapp-integration-guide.md
+│
 ├── linux/                             ← Linux installs, configs, troubleshooting
 │   ├── README.md
 │   └── ubuntu-vm-xfce-rdp-setup-guide.md
 │
 └── tools/                             ← IDE rules, CLI configs, dev environment setups
     ├── README.md
-    └── cursor/
+    ├── cursor/
+    │   ├── README.md
+    │   ├── rules-setup-guide.md
+    │   └── rules/                     ← drop-in .mdc files
+    │       ├── devops-kubernetes.mdc
+    │       ├── docker-best-practices.mdc
+    │       ├── gcp-cli-hygiene.mdc
+    │       ├── git-commit-format.mdc
+    │       ├── security-hygiene.mdc
+    │       └── shell-scripting.mdc
+    └── github/
         ├── README.md
-        ├── rules-setup-guide.md
-        └── rules/                     ← drop-in .mdc files
-            ├── devops-kubernetes.mdc
-            ├── docker-best-practices.mdc
-            ├── gcp-cli-hygiene.mdc
-            ├── git-commit-format.mdc
-            ├── security-hygiene.mdc
-            └── shell-scripting.mdc
+        └── org-github-app-for-cicd-setup-guide.md
 ```
 
-> Folders are added as content lands — empty folders aren't tracked. Future planned folders include `cloud/`, `kubernetes/`, `docker/`, `networking/`, `snippets/`.
+> Folders are added as content lands — empty folders aren't tracked. Future planned folders include `cloud/azure/`, `docker/`, `networking/`, `snippets/`.
 
 ---
 

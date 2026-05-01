@@ -1,15 +1,22 @@
 # Tools
 
-> [⬅ Back to repo root](../README.md) · [Workflow rules (AGENTS.md)](../AGENTS.md)
+> Setup guides, configuration notes, and reusable assets for developer tools, IDEs, and CLI utilities.
 
-Setup guides, configuration notes, and reusable assets for developer tools, IDEs, and CLI utilities.
+[Back to repo root](../README.md) · [Repo conventions](../AGENTS.md) · [`cloud/`](../cloud/) · [`linux/`](../linux/) · [`kubernetes/`](../kubernetes/) · [`ai-prompts/`](../ai-prompts/)
 
-## Index
+---
 
-- [`cursor/`](cursor/README.md) — Cursor IDE: rules setup guide and 6 drop-in `.mdc` rules for Cursor-specific behavior
+## Sub-folders
 
-*(More tools will be added here as they are published.)*
+| Folder | Scope |
+| --- | --- |
+| [`cursor/`](cursor/README.md) | Cursor IDE — rules setup guide + 6 drop-in `.mdc` rules |
+| [`github/`](github/README.md) | GitHub — Apps, Actions, org-wide automation patterns |
+
+*(More tool folders will be added here as they are published — e.g. `vscode/`, `gh-cli/`, `terraform/`.)*
+
+---
 
 ## Related
 
-- [Tool-agnostic AI prompts](../ai-prompts/README.md) — prompts that work in any AI tool, not just one
+- [Tool-agnostic AI prompts](../ai-prompts/README.md) — prompts that work in any AI tool (Cursor, Claude Code, ChatGPT, Gemini, …), not just one.
