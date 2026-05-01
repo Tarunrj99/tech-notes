@@ -1,0 +1,23 @@
+---
+description: Dockerfile and Docker Compose best practices
+globs: **/Dockerfile*, **/docker-compose*.yml
+alwaysApply: false
+---
+
+# Docker Best Practices
+
+## Dockerfile
+- Use specific base image tags — never FROM node:latest
+- Order layers: install deps before copying source code (cache efficiency)
+- Use multi-stage builds for compiled languages to keep image small
+- Run as non-root user: USER nonroot
+- Use .dockerignore to exclude node_modules, .git, secrets
+- Set WORKDIR explicitly: WORKDIR /app
+- Combine RUN commands with && to reduce layers
+
+## Docker Compose
+- Always specify version at top
+- Use named volumes, not bind mounts in production
+- Set restart: unless-stopped for production services
+- Use environment files (.env) for secrets, never hardcode in compose file
+- Add healthcheck to critical services

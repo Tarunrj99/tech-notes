@@ -1,0 +1,25 @@
+---
+description: GCP CLI and cloud resource hygiene rules
+globs: **/*.sh, **/*.yaml
+alwaysApply: false
+---
+
+# GCP & Cloud CLI Hygiene
+
+## gcloud Commands
+- Always specify --project flag explicitly — never rely on default project
+- Always specify --region or --zone explicitly
+- Use --format=json or --format=table for scripted output
+- Prefer gcloud auth application-default login over service account keys
+
+## Resource Creation
+- Never create service accounts unless absolutely necessary
+- Always clean up temporary resources after testing
+- Tag/label all created resources with: managed-by, environment, owner
+- Prefer IAM Conditions over broad role assignments
+
+## Cleanup Checklist (after testing)
+- Delete any test service accounts created
+- Revoke application-default credentials: gcloud auth application-default revoke
+- Disable any APIs that were enabled only for testing
+- Remove temporary IAM bindings

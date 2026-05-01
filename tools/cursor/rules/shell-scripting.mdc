@@ -1,0 +1,30 @@
+---
+description: Shell scripting best practices for bash scripts
+globs: **/*.sh
+alwaysApply: false
+---
+
+# Shell Script Standards
+
+## Header (every script must have)
+  #!/usr/bin/env bash
+  set -euo pipefail   # exit on error, undefined vars, pipe failure
+
+## Style
+- 2-space indentation
+- UPPER_CASE for constants and env vars
+- lower_case for local variables and function names
+- Quote all variable expansions: "$VAR" not $VAR
+
+## Error Handling
+- Always check exit codes for critical commands
+- Print meaningful error messages to stderr: echo "ERROR: ..." >&2
+- Use trap for cleanup: trap 'cleanup' EXIT
+
+## Functions
+- One function per logical task
+- Add a brief comment above each function explaining its purpose
+
+## Secrets
+- Never hardcode passwords or tokens in scripts
+- Read from environment variables or vault: VAL=$(vault kv get ...)

@@ -1,0 +1,27 @@
+---
+description: Kubernetes YAML and DevOps conventions
+globs: **/*.yaml, **/*.yml
+alwaysApply: false
+---
+
+# Kubernetes & DevOps YAML Standards
+
+## YAML Structure
+- Always include apiVersion, kind, metadata, spec in that order
+- Add labels: managed-by, environment, app to every resource metadata
+- Add comments explaining non-obvious fields
+
+## Naming Conventions
+- Resource names: lowercase, hyphen-separated (e.g. my-app-deployment)
+- Namespace names: environment-based (production, staging, development)
+- ConfigMap / Secret names: <app>-<type> (e.g. payments-api-config)
+
+## Security
+- Never hardcode secrets in YAML — use Kubernetes Secrets or Vault references
+- Always set resource requests and limits on containers
+- Use non-root user in containers where possible
+
+## Helm
+- values.yaml: document every key with a comment
+- Use .Release.Name prefix on resource names to avoid collisions
+- Pin image tags — never use :latest in production

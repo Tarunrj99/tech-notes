@@ -1,0 +1,25 @@
+---
+description: Security and secrets hygiene rules — apply to all files
+globs: ""
+alwaysApply: true
+---
+
+# Security & Secrets Hygiene
+
+## Never do this (in any file type)
+- Hardcode passwords, API keys, tokens, private keys in any file
+- Commit .env files with real values
+- Use root credentials for application service accounts
+- Store secrets in ConfigMaps (use Kubernetes Secrets or Vault)
+
+## Always do this
+- Reference secrets from environment variables or secret managers
+- Add .env to .gitignore
+- Use least-privilege principle for all service accounts and RBAC roles
+- Rotate secrets regularly — document rotation steps
+
+## When writing RBAC / IAM
+- Grant minimum permissions needed — no wildcards unless absolutely required
+- Prefer namespace-scoped Roles over cluster-wide ClusterRoles
+- Document what each permission allows and why it is needed
+- Always separate role definition from role binding (two files)
