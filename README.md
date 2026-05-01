@@ -1,113 +1,186 @@
 # tech-notes
 
-> Personal collection of setup guides, how-tos, and troubleshooting notes covering cloud, Linux, Kubernetes, Docker, networking, and developer tooling. Step-by-step and copy-paste ready — every command tested on real systems.
+**A personal tech knowledge base.**
+Step-by-step setup guides, reusable AI prompts, IDE rules, and troubleshooting notes for cloud, Linux, Kubernetes, Docker, and developer tooling — every command tested on real systems.
+
+*One repo. Everything I've ever set up. Copy-paste ready.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Made with Markdown](https://img.shields.io/badge/made%20with-markdown-1f425f.svg)](https://daringfireball.net/projects/markdown/)
+[![Last commit](https://img.shields.io/github/last-commit/Tarunrj99/tech-notes)](https://github.com/Tarunrj99/tech-notes/commits/main)
+[![Repo size](https://img.shields.io/github/repo-size/Tarunrj99/tech-notes)](https://github.com/Tarunrj99/tech-notes)
+
+[Why](#why-this-repo-exists) · [Catalog](#note-catalog) · [Layout](#repository-layout) · [How to use](#how-to-use) · [Conventions](#conventions) · [Contribute](#adding-a-new-note) · [License](#license)
 
 ---
 
-## Why this repo
+## Why this repo exists
 
-Every engineer has the same problem: *"I set this up six months ago — how did I do it again?"*
+Every engineer has the same recurring problem: *"I set this up six months ago — how exactly did I do it again?"*
 
-This repo is the answer. Each note is a self-contained, dated, command-by-command walkthrough that I (or anyone) can follow without searching Google or Stack Overflow again.
+Most answers end up scattered across browser bookmarks, Slack DMs, scratch files in `~/Downloads`, and half-remembered Stack Overflow threads. By the time you find them, the version you used is deprecated and the top-voted answer doesn't apply anymore.
 
-Think of it as a **personal runbook + public knowledge base**.
+This repo is the opposite:
 
----
+- **Each note is self-contained** — purpose, prerequisites, copy-paste commands, troubleshooting, all in one file.
+- **Each note is dated and tested** — written from a real working setup, not from memory.
+- **Each note is sanitized** — real IPs, emails, and project IDs are replaced with `<placeholders>` so the file is safe to share publicly.
+- **Each note is portable** — cloud-agnostic where possible, with provider-specific commands listed side-by-side when they differ.
 
-## Repository structure
-
-```
-tech-notes/
-├── README.md                # this file
-├── AGENTS.md                # the workflow for adding new notes (READ FIRST)
-├── LICENSE                  # MIT
-├── SECURITY.md              # how to report a security issue
-├── CONTRIBUTING.md          # how to add a new note
-├── .gitignore
-│
-├── ai-prompts/              # Tool-agnostic AI prompts (Cursor + Claude + ChatGPT + ...)
-├── linux/                   # Linux installs, configs, troubleshooting
-├── cloud/                   # Cloud-provider specific guides (GCP / AWS / Azure)
-├── kubernetes/              # k8s installs, helm, operators, troubleshooting
-├── docker/                  # Docker / containerd / image building
-├── networking/              # VPN, DNS, firewalls, load balancers
-├── tools/                   # CLI tools, IDEs, dev environment setups
-└── snippets/                # Quick one-liners and shell snippets
-```
-
-> Folders are added as content lands — empty folders aren't tracked.
+Think of it as a **personal runbook + public knowledge base**. Bookmark a note once, follow it forever.
 
 ---
 
-## Index
+## Table of contents
 
-### AI Prompts (tool-agnostic)
+1. [Why this repo exists](#why-this-repo-exists)
+2. [Note catalog](#note-catalog)
+3. [Repository layout](#repository-layout)
+4. [How to use](#how-to-use)
+5. [Conventions](#conventions)
+6. [Adding a new note](#adding-a-new-note)
+7. [Repo docs index](#repo-docs-index)
+8. [Security](#security)
+9. [License](#license)
 
-- [Google Docs HTML formatting](ai-prompts/google-docs-html-formatting/) — universal AI prompt that converts any HTML file into a layout that pastes cleanly into Google Docs. Wrappers included for Cursor (`.mdc`) and Claude Code (`SKILL.md`); also works in ChatGPT/Gemini as a plain prompt. Trigger: `apply doc formatting`.
+---
+
+## Note catalog
+
+> Every published note in this repo, grouped by topic. Status legend: **stable** = tested end-to-end · **draft** = WIP, may have gaps.
+
+### AI prompts (tool-agnostic)
+
+| Note | What you get | Works with | Status |
+| --- | --- | --- | --- |
+| [Google Docs HTML formatting](ai-prompts/google-docs-html-formatting/) | Universal AI prompt that converts any HTML file into a layout that pastes cleanly into Google Docs (proper headings, lists, tables, code blocks). Trigger phrase: `apply doc formatting`. | Cursor (`.mdc`), Claude Code (`SKILL.md`), ChatGPT, Gemini, any LLM | stable |
 
 ### Linux
 
-- [Setting up GUI mode in Ubuntu Linux 26.04 through CLI](linux/ubuntu-vm-xfce-rdp-setup-guide.md) — install XFCE desktop on a headless Ubuntu VM and access it over RDP. Works on local, GCP, AWS, Azure, or any Ubuntu VM.
+| Note | What you'll set up | Tested on | Status |
+| --- | --- | --- | --- |
+| [Ubuntu VM — XFCE desktop + RDP access from CLI](linux/ubuntu-vm-xfce-rdp-setup-guide.md) | Headless Ubuntu VM → full XFCE desktop accessible via RDP (Windows App / Microsoft Remote Desktop). Cloud-agnostic: works on local VMs, GCP, AWS, and Azure. | Ubuntu 26.04 | stable |
 
 ### Tools
 
-- [Cursor — Rules Setup & Reference Guide](tools/cursor/rules-setup-guide.md) — what Cursor Rules are, how to create global vs project rules, plus 6 Cursor-specific drop-in rules (commit format, Kubernetes/Docker conventions, shell scripting, security hygiene, GCP CLI hygiene). Files in [`tools/cursor/rules/`](tools/cursor/rules/).
+| Note | What you'll learn | Audience | Status |
+| --- | --- | --- | --- |
+| [Cursor — Rules setup & reference guide](tools/cursor/rules-setup-guide.md) | What Cursor Rules are, global vs project rules, file format, plus 6 drop-in `.mdc` rules (commit format, K8s, Docker, shell, security, GCP CLI). Files in [`tools/cursor/rules/`](tools/cursor/rules/). | Cursor IDE users | stable |
 
-*(More notes will be added here as they are published.)*
+*More notes will be added here as they're published. The order inside each section is alphabetical.*
+
+---
+
+## Repository layout
+
+```
+tech-notes/
+├── README.md                          ← you are here (start here)
+├── AGENTS.md                          ← workflow for adding notes (read before contributing)
+├── CONTRIBUTING.md                    ← short version for human contributors
+├── SECURITY.md                        ← how to report sensitive data leaks
+├── LICENSE                            ← MIT
+├── .gitignore
+│
+├── ai-prompts/                        ← tool-agnostic AI prompts
+│   ├── README.md
+│   └── google-docs-html-formatting/
+│       ├── README.md
+│       ├── prompt.md                  ← the universal prompt text
+│       └── wrappers/
+│           ├── cursor.mdc             ← Cursor wrapper (with frontmatter)
+│           └── claude-skill.md        ← Claude Code skill wrapper
+│
+├── linux/                             ← Linux installs, configs, troubleshooting
+│   ├── README.md
+│   └── ubuntu-vm-xfce-rdp-setup-guide.md
+│
+└── tools/                             ← IDE rules, CLI configs, dev environment setups
+    ├── README.md
+    └── cursor/
+        ├── README.md
+        ├── rules-setup-guide.md
+        └── rules/                     ← drop-in .mdc files
+            ├── devops-kubernetes.mdc
+            ├── docker-best-practices.mdc
+            ├── gcp-cli-hygiene.mdc
+            ├── git-commit-format.mdc
+            ├── security-hygiene.mdc
+            └── shell-scripting.mdc
+```
+
+> Folders are added as content lands — empty folders aren't tracked. Future planned folders include `cloud/`, `kubernetes/`, `docker/`, `networking/`, `snippets/`.
 
 ---
 
 ## How to use
 
-1. Browse the folder structure or use the index above.
-2. Open the `.md` file you need.
-3. Follow the steps — every command is copy-paste ready.
-4. If you hit a snag, check the **Troubleshooting** section at the bottom of each guide.
+1. **Browse the [catalog](#note-catalog) above** or open the folder you need.
+2. **Open the `.md` file** — every note starts with a one-line purpose, prerequisites, and target OS.
+3. **Copy-paste commands** — they're written to run as-is. Replace anything in `<angle brackets>` with your own values.
+4. **Hit a snag?** Each note has a *Troubleshooting* section at the bottom for the failure modes I actually ran into.
 
-All guides assume:
+### Assumptions every note makes
 
-- You're comfortable in a terminal
-- You have `sudo` access (for installs)
-- You're using a modern Ubuntu / Debian / RHEL-derivative unless stated otherwise
+- You're comfortable in a terminal.
+- You have `sudo` access on the target machine (for installs).
+- You're on a modern Ubuntu / Debian / RHEL-derivative unless the note says otherwise.
 
 ---
 
 ## Conventions
 
-- **Filenames:** lowercase kebab-case, descriptive (`ubuntu-vm-xfce-rdp-setup-guide.md`)
-- **Top of every note:** short purpose, target OS / version, dependencies
-- **Code blocks:** all commands fenced; no smart quotes, no line numbers, no prompts (`$`) inside the block
-- **Placeholders:** wrapped in angle brackets, e.g. `<your-username>`, `<vm-public-ip>` — never real hostnames, IPs, or credentials
-- **Cloud-agnostic where possible:** if a step differs by provider, list them side-by-side
+The bar is low: **a note is a real conversation in plain markdown**. The structural rules below exist only to keep things searchable and sanitized.
+
+| Aspect | Convention |
+| --- | --- |
+| Filenames | lowercase `kebab-case`, descriptive (`ubuntu-vm-xfce-rdp-setup-guide.md`) |
+| Top of every note | one-line purpose · target OS / version · prerequisites |
+| Code blocks | all commands fenced; no smart quotes, no line numbers, no `$` prompt inside the block |
+| Placeholders | wrapped in angle brackets — `<your-username>`, `<vm-public-ip>`, `<project-id>` — never real values |
+| Cloud-agnostic | if a step differs by provider, list them side-by-side (GCP / AWS / Azure) |
+| One scenario per file | don't combine "install + monitor + scale" into one mega-note; split it |
+| Date inside the note | a small "_tested on YYYY-MM-DD on Ubuntu X.Y_" line near the top |
 
 ---
 
-## Contributing / Adding a new note
+## Adding a new note
 
-**Read [AGENTS.md](AGENTS.md) first** — it's the single source of truth for the workflow:
+> **Read [AGENTS.md](AGENTS.md) first.** It is the single source of truth for the workflow — followed by humans **and** by AI agents (Cursor, Claude Code, etc.) when they help add content.
 
-- Where to put new files (folder map)
-- How to name them (kebab-case rules)
-- The note template
-- How to sanitize real values into placeholders
-- Secret-scan command to run before commit
-- How to update the index in this README
-- Commit message format
-- Pre-push checklist
+The short version:
 
-The same file is followed by AI agents (Cursor, Claude Code, etc.) when they help add content.
+1. Pick the right folder (or create one if it's a new topic — see the layout above).
+2. Name the file in `kebab-case` describing the *outcome* (`vpn-wireguard-server-setup.md`, not `wg-stuff.md`).
+3. Use the note template at the top of `AGENTS.md`.
+4. Sanitize: replace every real IP, email, project ID, and username with `<placeholders>`.
+5. Run the secret-scan command from `AGENTS.md` before committing.
+6. Update the [Note catalog](#note-catalog) table in this README.
+7. Commit with the format defined in `AGENTS.md` (`docs(<topic>): add ...`).
 
-For external contributors, see also [CONTRIBUTING.md](CONTRIBUTING.md).
+A short version for external contributors lives in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## Repo docs index
+
+| Doc | What's in it |
+| --- | --- |
+| [README.md](README.md) | This file — entry point, catalog, conventions |
+| [AGENTS.md](AGENTS.md) | Full workflow for adding notes, sanitization rules, secret-scan command, pre-push checklist (used by humans **and** AI agents) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Short version for external human contributors |
+| [SECURITY.md](SECURITY.md) | How to report a leaked secret or sensitive value found in this repo |
+| [LICENSE](LICENSE) | MIT |
 
 ---
 
 ## Security
 
-Found a sensitive value (real IP, key, credential) accidentally committed?
-Please **don't** open a public issue — see [SECURITY.md](SECURITY.md) for responsible disclosure.
+Found a sensitive value (real IP, email, key, credential) accidentally committed?
+**Please don't open a public issue** — follow the responsible-disclosure process in [SECURITY.md](SECURITY.md).
+
+The repo also has a sanitization workflow baked into [AGENTS.md](AGENTS.md) so this shouldn't happen at commit time, but mistakes happen — quiet disclosure helps me clean up history without exposing the value further.
 
 ---
 
@@ -115,4 +188,4 @@ Please **don't** open a public issue — see [SECURITY.md](SECURITY.md) for resp
 
 [MIT](LICENSE) © Tarun Saini
 
-You're free to copy, adapt, and redistribute these notes — attribution appreciated but not required.
+You're free to copy, adapt, and redistribute these notes inside your organisation or to fork them as the base for your own knowledge base. Attribution is appreciated but not required.
