@@ -79,6 +79,11 @@
   Pack Power      : 4.90 W  (draining from pack)
   Low Power Mode  : On 🔋
 
+  [When at 100%, trickle-charge phase (IsCharging=Yes but pmset has no estimate):]
+  Level           : [████████████████████████] 100%  🟢
+  Status          : Charging ⚡
+  Time to Full    : Topping off
+
   [When macOS Optimised Battery Charging is active:]
   ℹ️ Not charging: Optimized Battery Charging active  (normal — macOS manages charge timing)
 
@@ -245,6 +250,7 @@
 | Field | Meaning |
 |-------|---------|
 | Level | State of Charge (%) |
+| Time to Full | Minutes until full; **"Topping off"** when Level=100% but trickle charge is still active; **"calculating…"** when rate is unknown |
 | Current Now | `+` = charging, `−` = discharging |
 | Pack Power | Watts into/out-of the battery pack right now |
 | Today Range | The min/max charge level touched today |

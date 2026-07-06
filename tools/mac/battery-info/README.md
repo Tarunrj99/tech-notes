@@ -140,7 +140,7 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 |---|---|
 | Level | % charge with Unicode progress bar |
 | Status | Charging ⚡ / Discharging 🔋 / Full ✅ / Plugged-not-charging |
-| Time to Full / Remaining | Estimated time based on current charge/drain rate |
+| Time to Full / Remaining | Estimated time to full charge or battery depletion; shows **"Topping off"** when battery is at 100% and still in the final trickle-charge phase |
 | Battery Voltage | Pack voltage right now (typically 10–13V for a 3-cell pack) |
 | Current Now | Amps flowing in (+) or out (-) of the pack |
 | **Pack Power** | True watts going into/out of the battery (from PMU telemetry) |
