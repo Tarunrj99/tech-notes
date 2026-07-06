@@ -341,28 +341,28 @@ def render(d, model, interval):
 
     # Time label
     if d["full"]:
-        t_label = "Time to Full    : Fully charged"
+        t_label = "Time to Full   : Fully charged"
     elif d["is_chg"]:
         t = fmt_time(d["ttf"])
         if t == "—":
             if   d["soc"] >= 100: t = "Topping off"
             elif d["soc"] >= 95:  t = "Almost full"
             else:                 t = "Estimating…"
-        t_label = f"Time to Full    : {t}"
+        t_label = f"Time to Full   : {t}"
     else:
-        t_label = f"Time Remaining  : {fmt_time(d['tte'])}"
+        t_label = f"Time Remaining : {fmt_time(d['tte'])}"
 
     # Power flow
     src = "AC Power" if d["ext"] else "Battery Power"
     if d["ext"]:
-        pwr_line = (f"  Wall Input      : {d['wall_w']:.2f} W  "
+        pwr_line = (f"  Wall Input     : {d['wall_w']:.2f} W  "
                     f"({d['v_in']:.2f} V × {d['a_in']:.3f} A)")
-        batt_line = (f"  Battery {'In ' if d['is_chg'] else 'Out'}     : "
+        batt_line = (f"  Battery {'In ' if d['is_chg'] else 'Out'}    : "
                      f"{abs(d['batt_pwr']):.2f} W  ·  "
                      f"System: {d['sys_load']:.2f} W")
     else:
-        pwr_line  = f"  System Load     : {d['sys_load']:.2f} W"
-        batt_line = f"  Battery Out     : {abs(d['batt_pwr']):.2f} W  (draining)"
+        pwr_line  = f"  System Load    : {d['sys_load']:.2f} W"
+        batt_line = f"  Battery Out    : {abs(d['batt_pwr']):.2f} W  (draining)"
 
     # Network delta
     rx_kb = d["rx_delta"] / 1024
