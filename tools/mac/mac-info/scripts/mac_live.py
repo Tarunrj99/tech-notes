@@ -165,18 +165,34 @@ def collect(prev_net, prev_disk):
 
     # ── top processes ──
     top_procs = []
-    ps_out = run(["ps", "aux"])
-    for line in ps_out.splitlines()[1:]:
-        parts = line.split(None, 10)
-        if len(parts) >= 11:
+    if HAS_PSUTIL:
+        # psutil gives accurate names (handles paths with spaces, bundle names, etc.)
+        for proc in _psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent']):
             try:
-                cpu_p = float(parts[2])
-                mem_p = float(parts[3])
-                pid   = parts[1]
-                name  = os.path.basename(parts[10].split()[0])[:34]
+                cpu_p = proc.info.get('cpu_percent') or 0.0
+                mem_p = proc.info.get('memory_percent') or 0.0
+                pid   = str(proc.info['pid'])
+                name  = (proc.info.get('name') or '?')[:34]
                 top_procs.append((cpu_p, mem_p, pid, name))
-            except (ValueError, IndexError):
+            except (_psutil.NoSuchProcess, _psutil.AccessDenied, _psutil.ZombieProcess):
                 pass
+    else:
+        ps_out = run(["ps", "aux"])
+        for line in ps_out.splitlines()[1:]:
+            parts = line.split(None, 10)
+            if len(parts) >= 11:
+                try:
+                    cpu_p = float(parts[2])
+                    mem_p = float(parts[3])
+                    pid   = parts[1]
+                    cmd   = parts[10]
+                    # Strip argument suffixes (e.g. " (Renderer) --flag"), then get basename
+                    cmd_n = re.sub(r'\s+\([^)]*\).*$', '', cmd)
+                    cmd_n = re.sub(r'\s+--?\w\S*.*$', '', cmd_n).strip()
+                    name  = (cmd_n.rsplit('/', 1)[-1] if '/' in cmd_n else cmd_n)[:34]
+                    top_procs.append((cpu_p, mem_p, pid, name))
+                except (ValueError, IndexError):
+                    pass
     top_by_cpu = sorted(top_procs, key=lambda x: x[0], reverse=True)[:3]
     top_by_mem = sorted(top_procs, key=lambda x: x[1], reverse=True)[:3]
 
@@ -216,7 +232,7 @@ def collect(prev_net, prev_disk):
     up_h = int((uptime_secs % 86400) // 3600)
     up_m = int((uptime_secs % 3600) // 60)
     if up_d:
-        uptime_str = f"{up_d}d {up_h:02d}h {up_m:02d}m"
+        uptime_str = f"{up_d}d {up_h}h {up_m:02d}m"
     elif up_h:
         uptime_str = f"{up_h}h {up_m:02d}m"
     else:
