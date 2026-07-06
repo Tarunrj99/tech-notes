@@ -1,18 +1,34 @@
 #!/usr/bin/env python3
 """
 battery_info.py — Comprehensive Mac Power, Battery & System Report
-Fetches real-time data from ioreg, system_profiler, sysctl, pmset, and vm_stat.
-macOS only (Apple Silicon + Intel).
+Fetches real-time data from ioreg, system_profiler, sysctl, pmset, vm_stat, networksetup.
+macOS only (Apple Silicon + Intel). No third-party dependencies.
+
+Usage:
+  python3 battery_info.py              # print to terminal
+  python3 battery_info.py --export     # save to ~/Desktop/battery-report-<timestamp>.txt
+  python3 battery_info.py --export /path/to/file.txt   # save to custom path
 """
 
-import subprocess
-import re
-import sys
-import os
+import subprocess, re, sys, os
 from datetime import datetime, timedelta
 
 
-# ─────────────────────────── helpers ────────────────────────────
+# ───────────────────────────── CLI args ────────────────────────────────────────
+
+_args      = sys.argv[1:]
+_do_export = "--export" in _args
+_export_path = None
+if _do_export:
+    idx = _args.index("--export")
+    if idx + 1 < len(_args) and not _args[idx + 1].startswith("--"):
+        _export_path = _args[idx + 1]
+    else:
+        ts = datetime.now().strftime("%Y-%m-%d-%H-%M")
+        _export_path = os.path.expanduser(f"~/Desktop/battery-report-{ts}.txt")
+
+
+# ───────────────────────────── helpers ─────────────────────────────────────────
 
 def run(cmd, default="N/A"):
     try:
@@ -21,34 +37,9 @@ def run(cmd, default="N/A"):
         return default
 
 
-def run_list(cmd):
-    try:
-        return subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL).strip()
-    except Exception:
-        return ""
-
-
 def ioreg_int(s, pattern, default=0):
     m = re.search(pattern, s)
     return int(m.group(1)) if m else default
-
-
-def signed64(val):
-    """Convert a raw ioreg uint64 to a Python signed int (two's complement)."""
-    if val >= (1 << 63):
-        val -= (1 << 64)
-    return val
-
-
-def safe_mw(val):
-    """Return milliwatts clamped to [0, 500_000]; negative → 0 (discharging side)."""
-    v = signed64(val)
-    return max(0, v) if v >= 0 else 0
-
-
-def safe_ma(val):
-    """Return signed milliamps; large uint64 means negative (discharging current)."""
-    return signed64(val)
 
 
 def ioreg_str(s, pattern, default="N/A"):
@@ -58,81 +49,71 @@ def ioreg_str(s, pattern, default="N/A"):
 
 def ioreg_flag(s, pattern):
     m = re.search(pattern, s)
-    if not m:
-        return False
-    return m.group(1).strip() in ("Yes", "true", "1")
+    return m.group(1).strip() in ("Yes", "true", "1") if m else False
+
+
+def signed64(val):
+    """Two's complement: convert ioreg unsigned uint64 → signed Python int."""
+    return val - (1 << 64) if val >= (1 << 63) else val
 
 
 def fmt_time(minutes):
     if minutes <= 0 or minutes >= 65535:
         return "calculating…"
     h, m = divmod(int(minutes), 60)
-    if h:
-        return f"{h}h {m:02d}m"
-    return f"{m}m"
+    return f"{h}h {m:02d}m" if h else f"{m}m"
 
 
-def fmt_uptime(seconds):
-    td = timedelta(seconds=int(seconds))
-    days = td.days
-    hours, rem = divmod(td.seconds, 3600)
-    mins = rem // 60
-    parts = []
-    if days:
-        parts.append(f"{days}d")
-    if hours:
-        parts.append(f"{hours}h")
-    parts.append(f"{mins}m")
-    return " ".join(parts)
+def fmt_uptime(boot_ts):
+    td = timedelta(seconds=int(datetime.now().timestamp()) - int(boot_ts))
+    d, rem = td.days, td.seconds
+    h, m   = divmod(rem, 3600)
+    return f"{d}d {h}h {m // 60:02d}m"
+
+
+def bar(pct, width=24, reverse=False, neutral=False):
+    """Render a Unicode progress bar.
+    reverse=True  → high % is bad  (disk used, adapter load, cycles used)
+    neutral=True  → no colour judgement (just a progress indicator)
+    """
+    pct  = max(0, min(100, pct))
+    full = round(pct / 100 * width)
+    if neutral:
+        color = "⬜"
+    elif reverse:
+        color = "🔴" if pct >= 80 else "🟡" if pct >= 50 else "🟢"
+    else:
+        color = "🟢" if pct >= 80 else "🟡" if pct >= 50 else "🔴"
+    return f"[{'█' * full}{'░' * (width - full)}] {pct:.0f}%  {color}"
 
 
 def health_label(pct):
-    if pct >= 90:
-        return "Excellent ✅"
-    if pct >= 80:
-        return "Good 🟢"
-    if pct >= 70:
-        return "Fair 🟡"
-    if pct >= 60:
-        return "Degraded 🟠"
+    if pct >= 90: return "Excellent ✅"
+    if pct >= 80: return "Good 🟢"
+    if pct >= 70: return "Fair 🟡"
+    if pct >= 60: return "Degraded 🟠"
     return "Poor 🔴"
 
 
-def charge_status_label(is_charging, fully_charged, bp_mw, soc):
-    if fully_charged:
-        return "Full ✅"
-    if is_charging:
-        return "Charging ⚡"
-    if bp_mw > 0:
-        return "Discharging 🔋"
-    return "Idle / Standby 🔌"
+def mem_label(used_pct):
+    if used_pct < 60: return "Normal ✅"
+    if used_pct < 80: return "Moderate 🟡"
+    return "High pressure 🔴"
 
 
-def mem_pressure_label(free_mb, total_mb):
-    used_pct = 100 - (free_mb / total_mb * 100)
-    if used_pct < 60:
-        return f"{used_pct:.0f}% (Normal ✅)"
-    if used_pct < 80:
-        return f"{used_pct:.0f}% (Moderate 🟡)"
-    return f"{used_pct:.0f}% (High 🔴)"
+# ───────────────────────────── gather data ─────────────────────────────────────
 
+ioreg_raw = run(["ioreg", "-r", "-c", "AppleSmartBattery"])
 
-# ─────────────────────────── gather data ────────────────────────────
-
-ioreg_raw = run_list(["ioreg", "-r", "-c", "AppleSmartBattery"])
-
-# ── Battery fields ──────────────────────────────────────────────
+# ── Battery ─────────────────────────────────────────────────────────
 soc          = ioreg_int(ioreg_raw, r'"StateOfCharge"\s*=\s*(\d+)')
-soc_fb       = ioreg_int(ioreg_raw, r'"CurrentCapacity"\s*=\s*(\d+)')
 if soc == 0:
-    soc = soc_fb
+    soc      = ioreg_int(ioreg_raw, r'"CurrentCapacity"\s*=\s*(\d+)')
 
 raw_max_cap  = ioreg_int(ioreg_raw, r'"AppleRawMaxCapacity"\s*=\s*(\d+)')
 design_cap   = ioreg_int(ioreg_raw, r'"DesignCapacity"\s*=\s*(\d+)')
 nominal_cap  = ioreg_int(ioreg_raw, r'"NominalChargeCapacity"\s*=\s*(\d+)')
 raw_cur_cap  = ioreg_int(ioreg_raw, r'"AppleRawCurrentCapacity"\s*=\s*(\d+)')
-
-max_pct      = ioreg_int(ioreg_raw, r'"MaxCapacity"\s*=\s*(\d+)')
 design_cycle = ioreg_int(ioreg_raw, r'"DesignCycleCount9C"\s*=\s*(\d+)', 1000)
 cycle_count  = ioreg_int(ioreg_raw, r'"CycleCount"\s*=\s*(\d+)')
 bat_serial   = ioreg_str(ioreg_raw, r'"Serial"\s*=\s*"([^"]+)"')
@@ -141,54 +122,71 @@ is_charging  = ioreg_flag(ioreg_raw, r'"IsCharging"\s*=\s*(Yes|No|true|false)')
 fully_chgd   = ioreg_flag(ioreg_raw, r'"FullyCharged"\s*=\s*(Yes|No|true|false)')
 ext_conn     = ioreg_flag(ioreg_raw, r'"ExternalConnected"\s*=\s*(Yes|No|true|false)')
 
-time_to_full  = ioreg_int(ioreg_raw, r'"AvgTimeToFull"\s*=\s*(\d+)', 65535)
+time_to_full  = ioreg_int(ioreg_raw, r'"AvgTimeToFull"\s*=\s*(\d+)',  65535)
 time_to_empty = ioreg_int(ioreg_raw, r'"AvgTimeToEmpty"\s*=\s*(\d+)', 65535)
-time_remain   = ioreg_int(ioreg_raw, r'"TimeRemaining"\s*=\s*(\d+)', 65535)
 
-bat_voltage_mv = ioreg_int(ioreg_raw, r'"AppleRawBatteryVoltage"\s*=\s*(\d+)')
-if bat_voltage_mv == 0:
-    bat_voltage_mv = ioreg_int(ioreg_raw, r'"Voltage"\s*=\s*(\d+)')
+bat_volt_mv  = ioreg_int(ioreg_raw, r'"AppleRawBatteryVoltage"\s*=\s*(\d+)')
+if bat_volt_mv == 0:
+    bat_volt_mv = ioreg_int(ioreg_raw, r'"Voltage"\s*=\s*(\d+)')
 
-# Amperage is a signed value: positive = charging, negative = discharging.
-# ioreg may return it as an unsigned 64-bit number (two's complement).
+# Amperage: signed (+ = charging, - = discharging). ioreg returns uint64.
 _amp_raw     = ioreg_int(ioreg_raw, r'"InstantAmperage"\s*=\s*(\d+)')
 if _amp_raw == 0:
     _amp_raw = ioreg_int(ioreg_raw, r'"Amperage"\s*=\s*(\d+)')
-amperage_ma  = safe_ma(_amp_raw)
+amp_ma       = signed64(_amp_raw)          # signed mA
+amp_abs_ma   = abs(amp_ma)
 
-bat_temp_raw = ioreg_int(ioreg_raw, r'"Temperature"\s*=\s*(\d+)')
-bat_temp_c   = bat_temp_raw / 100.0
+bat_temp_c   = ioreg_int(ioreg_raw, r'"Temperature"\s*=\s*(\d+)') / 100.0
 
-not_charging_reason = ioreg_int(ioreg_raw, r'"NotChargingReason"\s*=\s*(\d+)')
-charging_voltage_mv = ioreg_int(ioreg_raw, r'"ChargingVoltage"\s*=\s*(\d+)')
-charging_current_ma = ioreg_int(ioreg_raw, r'"ChargingCurrent"\s*=\s*(\d+)')
+# Cell voltages (3 cells in series for 12V pack)
+cell_v       = re.search(r'"CellVoltage"\s*=\s*\(([^)]+)\)', ioreg_raw)
+cell_volts   = [int(v.strip()) for v in cell_v.group(1).split(",")] if cell_v else []
 
-# Lifetime stats from BatteryData block
-total_op_time_h  = ioreg_int(ioreg_raw, r'"TotalOperatingTime"\s*=\s*(\d+)')
-avg_temp_raw     = ioreg_int(ioreg_raw, r'"AverageTemperature"\s*=\s*(\d+)')
-max_temp_raw     = ioreg_int(ioreg_raw, r'"MaximumTemperature"\s*=\s*(\d+)')
-min_temp_raw     = ioreg_int(ioreg_raw, r'"MinimumTemperature"\s*=\s*(\d+)')
-daily_max_soc    = ioreg_int(ioreg_raw, r'"DailyMaxSoc"\s*=\s*(\d+)')
-daily_min_soc    = ioreg_int(ioreg_raw, r'"DailyMinSoc"\s*=\s*(\d+)')
-max_charge_ever  = ioreg_int(ioreg_raw, r'"MaximumChargeCurrent"\s*=\s*(\d+)')
+# Qmax (true measured capacity per cell from coulomb counting)
+qmax_v       = re.search(r'"Qmax"\s*=\s*\(([^)]+)\)', ioreg_raw)
+qmax_vals    = [int(v.strip()) for v in qmax_v.group(1).split(",")] if qmax_v else []
 
-# ── Power telemetry ──────────────────────────────────────────────
+# ChargerData (cell-level — NOT used for pack power calculation)
+chg_inhibit  = ioreg_int(ioreg_raw, r'"ChargerInhibitReason"\s*=\s*(\d+)')
+not_chg_rsn  = ioreg_int(ioreg_raw, r'"NotChargingReason"\s*=\s*(\d+)')
+slow_chg_rsn = ioreg_int(ioreg_raw, r'"SlowChargingReason"\s*=\s*(\d+)')
+chg_therml_s = ioreg_int(ioreg_raw, r'"TimeChargingThermallyLimited"\s*=\s*(\d+)')
+
+# Lifetime stats
+total_op_h   = ioreg_int(ioreg_raw, r'"TotalOperatingTime"\s*=\s*(\d+)')
+avg_temp_raw = ioreg_int(ioreg_raw, r'"AverageTemperature"\s*=\s*(\d+)')
+max_temp_raw = ioreg_int(ioreg_raw, r'"MaximumTemperature"\s*=\s*(\d+)')
+min_temp_raw = ioreg_int(ioreg_raw, r'"MinimumTemperature"\s*=\s*(\d+)')
+daily_max    = ioreg_int(ioreg_raw, r'"DailyMaxSoc"\s*=\s*(\d+)')
+daily_min    = ioreg_int(ioreg_raw, r'"DailyMinSoc"\s*=\s*(\d+)')
+max_chg_ever = ioreg_int(ioreg_raw, r'"MaximumChargeCurrent"\s*=\s*(\d+)')
+min_volt_ever= ioreg_int(ioreg_raw, r'"MinimumPackVoltage"\s*=\s*(\d+)')
+max_volt_ever= ioreg_int(ioreg_raw, r'"MaximumPackVoltage"\s*=\s*(\d+)')
+
+# ── Power telemetry ──────────────────────────────────────────────────────────
+# All values are real-time snapshots from the PMU hardware.
 sys_v_mv     = ioreg_int(ioreg_raw, r'"SystemVoltageIn"\s*=\s*(\d+)')
 sys_i_ma     = ioreg_int(ioreg_raw, r'"SystemCurrentIn"\s*=\s*(\d+)')
 sys_pw_mw    = ioreg_int(ioreg_raw, r'"SystemPowerIn"\s*=\s*(\d+)')
-sys_load_mw  = safe_mw(ioreg_int(ioreg_raw, r'"SystemLoad"\s*=\s*(\d+)'))
-# BatteryPower is signed: positive when charging INTO battery, negative when draining.
-# On battery (discharging), ioreg reports it as a large uint64 (two's complement).
-_bp_raw      = ioreg_int(ioreg_raw, r'"BatteryPower"\s*=\s*(\d+)')
-bat_pw_mw    = signed64(_bp_raw)        # negative means discharging
-bat_drain_mw = abs(bat_pw_mw) if bat_pw_mw < 0 else 0   # discharge rate
-bat_chg_mw   = bat_pw_mw if bat_pw_mw > 0 else 0         # charge rate
+sys_load_mw  = ioreg_int(ioreg_raw, r'"SystemLoad"\s*=\s*(\d+)')
 eff_loss_mw  = ioreg_int(ioreg_raw, r'"AdapterEfficiencyLoss"\s*=\s*(\d+)')
 
-if sys_pw_mw == 0 and sys_v_mv > 0 and sys_i_ma > 0:
-    sys_pw_mw = sys_v_mv * sys_i_ma // 1000
+# BatteryPower: signed mW. Positive → charging into battery; negative → draining.
+_bp_raw      = ioreg_int(ioreg_raw, r'"BatteryPower"\s*=\s*(\d+)')
+bat_pw_mw    = signed64(_bp_raw)
+bat_chg_mw   = bat_pw_mw if bat_pw_mw > 0 else 0
+bat_drain_mw = abs(bat_pw_mw) if bat_pw_mw < 0 else 0
 
-# ── Adapter / charger ─────────────────────────────────────────────
+# Wall input: SystemVoltageIn × SystemCurrentIn gives wall-side draw.
+# SystemPowerIn is what the system actually receives (after adapter conversion).
+wall_mw = sys_v_mv * sys_i_ma // 1000 if sys_v_mv and sys_i_ma else sys_pw_mw
+
+# Battery pack power (correct): Amperage × Pack Voltage (both measured at pack terminals).
+# NOTE: ChargingVoltage in ChargerData is the per-CELL target voltage — do NOT use it
+#       to compute pack power. Use amp_abs_ma × bat_volt_mv instead.
+pack_pw_mw   = amp_abs_ma * bat_volt_mv // 1000
+
+# ── Adapter / USB-C PD ───────────────────────────────────────────────────────
 adp_name     = ioreg_str(ioreg_raw, r'"Name"\s*=\s*"([^"]+)"')
 adp_serial   = ioreg_str(ioreg_raw, r'"SerialString"\s*=\s*"([^"]+)"')
 adp_mfg      = ioreg_str(ioreg_raw, r'"Manufacturer"\s*=\s*"([^"]+)"')
@@ -199,203 +197,337 @@ adp_watts    = ioreg_int(ioreg_raw, r'"Watts"\s*=\s*(\d+)')
 adp_cur_ma   = ioreg_int(ioreg_raw, r'"Current"\s*=\s*(\d+)')
 adp_volt_mv  = ioreg_int(ioreg_raw, r'"AdapterVoltage"\s*=\s*(\d+)')
 
-# ── System / Hardware ─────────────────────────────────────────────
-hw_raw   = run(["system_profiler", "SPHardwareDataType"])
-model    = re.search(r"Model Name:\s*(.+)", hw_raw)
-model    = model.group(1).strip() if model else "N/A"
-chip     = re.search(r"Chip:\s*(.+)", hw_raw)
-chip     = chip.group(1).strip() if chip else run(["sysctl", "-n", "machdep.cpu.brand_string"])
-mem_str  = re.search(r"Memory:\s*(.+)", hw_raw)
-mem_str  = mem_str.group(1).strip() if mem_str else "N/A"
-mac_ser  = re.search(r"Serial Number.*?:\s*(\S+)", hw_raw)
-mac_ser  = mac_ser.group(1).strip() if mac_ser else "N/A"
+# PD negotiated profile: UsbHvcHvcIndex tells which entry in UsbHvcMenu is active.
+pd_idx       = ioreg_int(ioreg_raw, r'"UsbHvcHvcIndex"\s*=\s*(\d+)')
+pd_menus     = re.findall(r'"Index"\s*=\s*(\d+)[^}]*?"MaxCurrent"\s*=\s*(\d+)[^}]*?"MaxVoltage"\s*=\s*(\d+)', ioreg_raw)
+pd_contract  = None
+for (idx_s, cur_s, volt_s) in pd_menus:
+    if int(idx_s) == pd_idx:
+        pd_contract = (int(volt_s), int(cur_s))  # (mV, mA)
+        break
+if pd_contract:
+    pd_neg_v, pd_neg_a = pd_contract[0] / 1000, pd_contract[1] / 1000
+    pd_max_w = pd_neg_v * pd_neg_a
+else:
+    pd_neg_v  = adp_volt_mv / 1000
+    pd_neg_a  = adp_cur_ma / 1000
+    pd_max_w  = adp_watts or pd_neg_v * pd_neg_a
+
+wall_w       = wall_mw / 1000
+pd_util_pct  = (wall_w / pd_max_w * 100) if pd_max_w else 0
+pd_headroom  = max(0, pd_max_w - wall_w)
+
+# ── System / Hardware ────────────────────────────────────────────────────────
+hw_raw  = run(["system_profiler", "SPHardwareDataType"])
+model   = (re.search(r"Model Name:\s*(.+)",        hw_raw) or type('', (), {'group': lambda s, n: type('', (), {'strip': lambda s: 'N/A'})()})()).group(1)
+model   = model.strip() if hasattr(model, 'strip') else "N/A"
+
+def hw(pattern, fallback="N/A"):
+    m = re.search(pattern, hw_raw)
+    return m.group(1).strip() if m else fallback
+
+model      = hw(r"Model Name:\s*(.+)")
+model_id   = hw(r"Model Identifier:\s*(.+)")
+model_num  = hw(r"Model Number:\s*(.+)", "")
+chip       = hw(r"Chip:\s*(.+)", run(["sysctl", "-n", "machdep.cpu.brand_string"]))
+mem_str    = hw(r"Memory:\s*(.+)")
+mac_serial = hw(r"Serial Number.*?:\s*(\S+)")
 
 macos_ver  = run(["sw_vers", "-productVersion"])
 macos_bld  = run(["sw_vers", "-buildVersion"])
+macos_name = run(["sw_vers", "-productName"])
 hostname   = run(["hostname"])
 arch       = run(["uname", "-m"])
 pcpu       = run(["sysctl", "-n", "hw.physicalcpu"])
 lcpu       = run(["sysctl", "-n", "hw.logicalcpu"])
 
-# ── Uptime / load ─────────────────────────────────────────────────
-uptime_raw  = run(["sysctl", "-n", "kern.boottime"])
-boot_ts_m   = re.search(r"sec\s*=\s*(\d+)", uptime_raw)
-if boot_ts_m:
-    boot_ts  = int(boot_ts_m.group(1))
-    now_ts   = int(datetime.now().timestamp())
-    uptime_s = now_ts - boot_ts
-    uptime_fmt = fmt_uptime(uptime_s)
-else:
-    uptime_fmt = run(["uptime"]).split(",")[0].split("up ")[-1].strip()
+# ── Uptime / load ────────────────────────────────────────────────────────────
+boot_raw   = run(["sysctl", "-n", "kern.boottime"])
+boot_m     = re.search(r"sec\s*=\s*(\d+)", boot_raw)
+uptime_fmt = fmt_uptime(boot_m.group(1)) if boot_m else "N/A"
 
-load_raw = run(["sysctl", "-n", "vm.loadavg"])
-load_m   = re.findall(r"[\d.]+", load_raw)
-load_str = "  ".join(load_m[:3]) if len(load_m) >= 3 else "N/A"
+load_raw   = run(["sysctl", "-n", "vm.loadavg"])
+load_vals  = re.findall(r"[\d.]+", load_raw)
+load_str   = "  ".join(load_vals[:3]) if len(load_vals) >= 3 else "N/A"
 
-# ── Memory ────────────────────────────────────────────────────────
-mem_bytes  = int(run(["sysctl", "-n", "hw.memsize"], "0"))
-mem_total  = mem_bytes / (1024 ** 3)
+# ── Memory ───────────────────────────────────────────────────────────────────
+mem_bytes    = int(run(["sysctl", "-n", "hw.memsize"], "0"))
+mem_total_gb = mem_bytes / (1024 ** 3)
 
-vm_stat_raw = run_list(["vm_stat"])
-page_size_m = re.search(r"page size of (\d+) bytes", vm_stat_raw)
-page_size   = int(page_size_m.group(1)) if page_size_m else 16384
+vm_raw       = run(["vm_stat"])
+pg_sz_m      = re.search(r"page size of (\d+) bytes", vm_raw)
+pg_sz        = int(pg_sz_m.group(1)) if pg_sz_m else 16384
 
-def vm_pages(label):
-    m = re.search(rf"{label}:\s*([\d.]+)", vm_stat_raw)
+def vm_pg(label):
+    m = re.search(rf"{label}:\s*([\d.]+)", vm_raw)
     return int(float(m.group(1))) if m else 0
 
-pages_free     = vm_pages("Pages free")
-pages_active   = vm_pages("Pages active")
-pages_inactive = vm_pages("Pages inactive")
-pages_wired    = vm_pages("Pages wired down")
-pages_compress = vm_pages("Pages occupied by compressor")
+pg_free     = vm_pg("Pages free")
+pg_active   = vm_pg("Pages active")
+pg_inactive = vm_pg("Pages inactive")
+pg_wired    = vm_pg("Pages wired down")
+pg_comp     = vm_pg("Pages occupied by compressor")
+pg_spec     = vm_pg("Pages speculative")
 
-mem_free_gb    = pages_free * page_size / (1024 ** 3)
-mem_active_gb  = pages_active * page_size / (1024 ** 3)
-mem_inactive_gb = pages_inactive * page_size / (1024 ** 3)
-mem_wired_gb   = pages_wired * page_size / (1024 ** 3)
-mem_compress_gb = pages_compress * page_size / (1024 ** 3)
-mem_used_gb    = mem_active_gb + mem_wired_gb + mem_compress_gb
+gb = lambda pg: pg * pg_sz / (1024 ** 3)
+mem_free_gb = gb(pg_free + pg_spec)
+mem_act_gb  = gb(pg_active)
+mem_inact_gb= gb(pg_inactive)
+mem_wired_gb= gb(pg_wired)
+mem_comp_gb = gb(pg_comp)
+mem_used_gb = mem_act_gb + mem_wired_gb + mem_comp_gb
+mem_used_pct= mem_used_gb / mem_total_gb * 100
 
-# ── Disk ──────────────────────────────────────────────────────────
+# ── Disk ─────────────────────────────────────────────────────────────────────
 disk_raw = run(["df", "-g", "/"])
 disk_m   = re.search(r"(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%", disk_raw)
 if disk_m:
-    disk_total = int(disk_m.group(1))
-    disk_used  = int(disk_m.group(2))
-    disk_free  = int(disk_m.group(3))
-    disk_pct   = int(disk_m.group(4))
+    disk_total, disk_used, disk_free, disk_pct = [int(x) for x in disk_m.groups()]
 else:
     disk_total = disk_used = disk_free = disk_pct = 0
 
-# ── pmset ─────────────────────────────────────────────────────────
-pmset_raw         = run_list(["pmset", "-g", "batt"])
-pmset_source_m    = re.search(r"Now drawing from '(.+)'", pmset_raw)
-pmset_source      = pmset_source_m.group(1) if pmset_source_m else "Unknown"
-pmset_pct_m       = re.search(r"(\d+)%;", pmset_raw)
-pmset_pct         = int(pmset_pct_m.group(1)) if pmset_pct_m else soc
+# ── Network ──────────────────────────────────────────────────────────────────
+# Try both en0 and en1 for WiFi SSID
+wifi_ssid = "Not connected"
+for iface in ["en0", "en1", "en2"]:
+    _w = run(["networksetup", "-getairportnetwork", iface])
+    if "Current Wi-Fi Network:" in _w:
+        wifi_ssid = _w.replace("Current Wi-Fi Network:", "").strip()
+        break
 
-pmset_ps          = run_list(["pmset", "-g", "ps"])
-sleep_m           = re.search(r"sleep\s+(\d+)", run_list(["pmset", "-g"]))
-sleep_min         = int(sleep_m.group(1)) if sleep_m else 0
+ipv4 = run(["ipconfig", "getifaddr", "en0"])
+if ipv4 == "N/A":
+    ipv4 = run(["ipconfig", "getifaddr", "en1"])
 
-# ── Derived calculations ──────────────────────────────────────────
+# IPv6 from scutil — match only proper IPv6 (contains at least one colon group)
+nwi_raw  = run(["scutil", "--nwi"])
+ipv6_m   = re.search(r"address\s*:\s*((?:[0-9a-fA-F]{1,4}:){2,}[0-9a-fA-F:]+)", nwi_raw)
+ipv6     = ipv6_m.group(1) if ipv6_m else "N/A"
+
+# Public IP (optional, requires network — safe no-op if offline)
+pub_ip = run(["curl", "-s", "--max-time", "3", "https://api.ipify.org"], "unavailable")
+
+# WiFi signal quality
+wifi_info = run(["system_profiler", "SPAirPortDataType"])
+rssi_m    = re.search(r"Signal / Noise.*?(-\d+)\s*/\s*(-\d+)", wifi_info)
+rssi_str  = f"{rssi_m.group(1)} dBm / {rssi_m.group(2)} dBm" if rssi_m else "N/A"
+channel_m = re.search(r"Channel:\s*(.+)", wifi_info)
+wifi_ch   = channel_m.group(1).strip() if channel_m else "N/A"
+tx_rate_m = re.search(r"Tx Rate:\s*([\d.]+)", wifi_info)
+tx_rate   = f"{tx_rate_m.group(1)} Mbps" if tx_rate_m else "N/A"
+
+# ── pmset ────────────────────────────────────────────────────────────────────
+pmset_batt      = run(["pmset", "-g", "batt"])
+pmset_src_m     = re.search(r"Now drawing from '(.+)'", pmset_batt)
+pmset_source    = pmset_src_m.group(1) if pmset_src_m else "Unknown"
+pmset_pct_m     = re.search(r"(\d+)%;", pmset_batt)
+pmset_pct       = int(pmset_pct_m.group(1)) if pmset_pct_m else soc
+
+pmset_all       = run(["pmset", "-g"])
+sleep_m         = re.search(r"^\s*sleep\s+(\d+)", pmset_all, re.MULTILINE)
+sleep_min       = int(sleep_m.group(1)) if sleep_m else 0
+disksleep_m     = re.search(r"disksleep\s+(\d+)", pmset_all)
+disksleep_min   = int(disksleep_m.group(1)) if disksleep_m else 0
+halfdim_m       = re.search(r"halfdim\s+(\d+)", pmset_all)
+halfdim         = int(halfdim_m.group(1)) if halfdim_m else 0
+lidwake_m       = re.search(r"lidwake\s+(\d+)", pmset_all)
+lidwake         = int(lidwake_m.group(1)) if lidwake_m else 0
+lowpwrm_m       = re.search(r"lowpowermode\s+(\d+)", pmset_all)
+low_power_mode  = int(lowpwrm_m.group(1)) if lowpwrm_m else 0
+
+pmset_assert    = run(["pmset", "-g", "assertions"])
+idle_prevented  = "PreventUserIdleSystemSleep" in pmset_assert and re.search(r"PreventUserIdleSystemSleep\s+1", pmset_assert)
+
+
+# ───────────────────────────── derived values ──────────────────────────────────
+
 health_pct     = (raw_max_cap / design_cap * 100) if design_cap else 0
-bat_power_w    = abs(amperage_ma) * bat_voltage_mv / 1_000_000
 cycles_remain  = max(0, design_cycle - cycle_count)
 cycle_pct_used = (cycle_count / design_cycle * 100) if design_cycle else 0
 
-sys_pw_w    = sys_pw_mw / 1000
-sys_load_w  = sys_load_mw / 1000
-bat_chg_w   = bat_chg_mw / 1000
-bat_drain_w = bat_drain_mw / 1000
-eff_loss_w  = eff_loss_mw / 1000
-adp_in_w    = sys_v_mv * sys_i_ma / 1_000_000
+# True battery power at the pack terminals (most accurate):
+# BatteryPower (from telemetry) is the direct PMU measurement.
+# pack_pw_mw (Amperage × Pack Voltage) cross-validates it.
+display_bat_pw = bat_chg_mw if is_charging else bat_drain_mw
+# Choose the telemetry reading when available, fall back to amp×volt
+if display_bat_pw == 0:
+    display_bat_pw = pack_pw_mw
 
-char_status = charge_status_label(is_charging, fully_chgd, abs(bat_pw_mw), soc)
+display_bat_w  = display_bat_pw / 1000
+sys_load_w     = sys_load_mw / 1000
+sys_pw_w       = sys_pw_mw / 1000
+eff_loss_w     = eff_loss_mw / 1000
+
+# Charging status label
+if fully_chgd:
+    status_str = "Full ✅"
+elif is_charging:
+    status_str = "Charging ⚡"
+elif ext_conn:
+    status_str = "Plugged in — not charging 🔌"
+else:
+    status_str = "Discharging 🔋"
 
 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# ─────────────────────────── render ────────────────────────────
 
-print(f"""
+# ───────────────────────────── render ──────────────────────────────────────────
+
+def section(title):
+    return f"\n{'━'*66}\n  {title}\n{'━'*66}"
+
+
+lines = []
+lines.append(f"""
 ╔══════════════════════════════════════════════════════════════════╗
-║        🍎  Mac System & Battery Report  ·  {now_str}        ║
-╚══════════════════════════════════════════════════════════════════╝
+║     🍎  Mac System & Battery Report  ·  {now_str}     ║
+╚══════════════════════════════════════════════════════════════════╝""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🖥️   MACHINE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Model           : {model}
+# ── 1. MACHINE ────────────────────────────────────────────────────────────────
+lines.append(section("🖥️   MACHINE"))
+lines.append(f"""  Model           : {model}  ({model_id}){"  [" + model_num + "]" if model_num else ""}
   Chip            : {chip}  [{arch}]
   CPU Cores       : {pcpu} physical · {lcpu} logical
   RAM             : {mem_str}
-  Serial          : {mac_ser}
-  macOS           : {macos_ver}  (build {macos_bld})
-  Hostname        : {hostname}
+  Serial          : {mac_serial}
+  macOS           : {macos_name} {macos_ver}  (build {macos_bld})
+  Hostname        : {hostname}""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🔌  CHARGER / ADAPTER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Connected       : {"Yes ✅" if ext_conn else "No ❌  (running on battery)"}
-  Name            : {adp_name.strip() if ext_conn else "—"}
-  Manufacturer    : {adp_mfg if ext_conn else "—"}
-  Model ID        : {adp_model if ext_conn else "—"}
-  Serial          : {adp_serial if ext_conn else "—"}
-  Firmware        : {(adp_fw + "  (HW: " + adp_hw + ")") if ext_conn else "—"}
-  Rated Power     : {str(adp_watts) + " W" if ext_conn else "—"}
-  Max Voltage     : {f"{adp_volt_mv/1000:.2f} V" if ext_conn else "—"}
-  Max Current     : {f"{adp_cur_ma/1000:.2f} A" if ext_conn else "—"}
-  Protocol        : {"USB-C PD (auto-negotiated)" if ext_conn else "—"}
+# ── 2. CHARGER / ADAPTER ──────────────────────────────────────────────────────
+lines.append(section("🔌  CHARGER / ADAPTER"))
+if ext_conn:
+    lines.append(f"""  Connected       : Yes ✅
+  Name            : {adp_name.strip()}
+  Manufacturer    : {adp_mfg}
+  Model ID        : {adp_model}
+  Serial          : {adp_serial}
+  Firmware        : {adp_fw}  (HW rev: {adp_hw})
+  Adapter Rating  : {adp_watts} W  (rated max)
+  Negotiated PD   : {pd_neg_v:.0f} V × {pd_neg_a:.1f} A = {pd_max_w:.0f} W  (USB-C PD profile {pd_idx})
+  Wall Draw Now   : {wall_w:.2f} W  ({sys_v_mv/1000:.2f} V × {sys_i_ma/1000:.3f} A)
+  Adapter Usage   : {bar(pd_util_pct, 20, neutral=True)}
+  Headroom Left   : {pd_headroom:.1f} W  (unused capacity)""")
+else:
+    lines.append(f"""  Connected       : No ❌  (running on internal battery)
+  Last known      : {adp_name.strip() if adp_name != "N/A" else "—"}""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ⚡  POWER FLOW  (real-time)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Power Source    : {pmset_source}
-  Wall Input      : {f"{adp_in_w:.2f} W  ({sys_v_mv/1000:.2f} V × {sys_i_ma/1000:.3f} A)" if ext_conn else "0.00 W  (not connected)"}
-  System Receives : {f"{sys_pw_w:.2f} W" if ext_conn else "—"}
-  System Load     : {sys_load_w:.2f} W
-  {"Battery Output  : " + f"{bat_drain_w:.2f} W  (draining)" if not ext_conn else "Battery Input   : " + f"{bat_chg_w:.2f} W  (charging)"}
-  Adapter Loss    : {f"{eff_loss_w:.2f} W" if ext_conn else "—"}
+# ── 3. POWER FLOW ─────────────────────────────────────────────────────────────
+lines.append(section("⚡  POWER FLOW  (real-time, from PMU telemetry)"))
+if ext_conn:
+    lines.append(f"""  Power Source    : {pmset_source}
+  ┌─ Wall Input    : {wall_w:.2f} W  ← from wall outlet
+  │  Adapter Loss  : {eff_loss_w:.2f} W  ← conversion overhead
+  │  System Gets   : {sys_pw_w:.2f} W  ← delivered to Mac
+  ├─ System Load   : {sys_load_w:.2f} W  ← CPU + GPU + peripherals
+  └─ Battery In    : {display_bat_w:.2f} W  ← going into battery pack
+  ─────────────────────────────────────────────────────────────────
+  Balance check   : {sys_load_w:.2f} + {display_bat_w:.2f} = {sys_load_w + display_bat_w:.2f} W  (should ≈ {wall_w:.2f} W)""")
+else:
+    lines.append(f"""  Power Source    : {pmset_source}
+  System Load     : {sys_load_w:.2f} W  ← CPU + GPU + peripherals
+  Battery Out     : {display_bat_w:.2f} W  ← draining from pack
+  ─────────────────────────────────────────────────────────────────
+  Drain rate      : {amp_abs_ma/1000:.3f} A × {bat_volt_mv/1000:.3f} V = {pack_pw_mw/1000:.2f} W""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🔋  BATTERY — STATE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Level           : {soc}%  ({pmset_pct}% via pmset)
-  Status          : {char_status}
-  {"Time to Full   : " + fmt_time(time_to_full) if is_charging else "Time Remaining : " + fmt_time(time_to_empty)}
-  {"Charging Speed : " + f"{charging_current_ma/1000:.2f} A @ {charging_voltage_mv/1000:.2f} V  →  {charging_current_ma*charging_voltage_mv/1_000_000:.2f} W" if is_charging else "Drain Rate      : " + f"{abs(amperage_ma)/1000:.3f} A  ({bat_power_w:.2f} W)"}
-  Battery Voltage : {bat_voltage_mv/1000:.3f} V
-  Instantaneous I : {abs(amperage_ma)/1000:.3f} A  ({bat_power_w:.2f} W)
-  Today Min/Max   : {daily_min_soc}% – {daily_max_soc}%
+# ── 4. BATTERY — STATE ────────────────────────────────────────────────────────
+lines.append(section("🔋  BATTERY — STATE"))
+time_line = f"  Time to Full    : {fmt_time(time_to_full)}" if is_charging else f"  Time Remaining  : {fmt_time(time_to_empty)}"
+lines.append(f"""  Level           : {bar(soc)}
+  Status          : {status_str}
+{time_line}
+  Battery Voltage : {bat_volt_mv/1000:.3f} V  (pack)
+  Current Now     : {amp_abs_ma/1000:.3f} A  ({"+" if is_charging else "-"}, {"charging" if is_charging else "discharging"})
+  Pack Power      : {display_bat_w:.2f} W  ({"charging into" if is_charging else "draining from"} pack)
+  Low Power Mode  : {"On 🔋" if low_power_mode else "Off"}
+  Today Range     : {daily_min}% – {daily_max}%  (min/max SOC today)""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🔋  BATTERY — HEALTH
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Health          : {health_pct:.1f}%  →  {health_label(health_pct)}
-  Max Capacity    : {raw_max_cap} mAh  (design: {design_cap} mAh)
-  Nominal Cap     : {nominal_cap} mAh
-  Current Charge  : {raw_cur_cap} mAh
-  Cycle Count     : {cycle_count}  /  {design_cycle}  ({cycle_pct_used:.1f}% used)
-  Cycles Left     : ~{cycles_remain}
+if cell_volts:
+    cell_str = "  ".join(f"Cell{i+1}: {v/1000:.3f}V" for i, v in enumerate(cell_volts))
+    pack_sum = sum(cell_volts)
+    lines.append(f"  Cell Voltages   : {cell_str}  (pack sum: {pack_sum/1000:.3f} V)")
+
+if not_chg_rsn:
+    lines.append(f"  ⚠ Not charging reason code: {not_chg_rsn}")
+if slow_chg_rsn:
+    lines.append(f"  ⚠ Slow charging reason code: {slow_chg_rsn}")
+if chg_therml_s:
+    lines.append(f"  ⚠ Thermally limited: {chg_therml_s}s total")
+
+# ── 5. BATTERY — HEALTH ───────────────────────────────────────────────────────
+lines.append(section("🔋  BATTERY — HEALTH"))
+lines.append(f"""  Health          : {bar(health_pct)}  →  {health_label(health_pct)}
+  Max Capacity    : {raw_max_cap:,} mAh  ←  design was {design_cap:,} mAh  (lost {design_cap - raw_max_cap:,} mAh)
+  Nominal Cap     : {nominal_cap:,} mAh
+  Current Charge  : {raw_cur_cap:,} mAh  ({raw_cur_cap/raw_max_cap*100:.0f}% of max)
+  Qmax (cells)    : {", ".join(str(q) + " mAh" for q in qmax_vals) if qmax_vals else "N/A"}
+  Cycle Count     : {bar(cycle_pct_used, 20, reverse=True)}
+                    {cycle_count} used  /  {design_cycle} rated  (~{cycles_remain} remaining)
   Battery Serial  : {bat_serial}
+  Peak V ever     : {max_volt_ever/1000:.3f} V  |  Low V ever : {min_volt_ever/1000:.3f} V
+  Peak charge I   : {max_chg_ever/1000:.3f} A  (lifetime max)""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🌡️   THERMAL
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Battery Temp    : {bat_temp_c:.1f} °C  (now)
+# ── 6. THERMAL ────────────────────────────────────────────────────────────────
+lines.append(section("🌡️   THERMAL"))
+lines.append(f"""  Battery Temp    : {bat_temp_c:.1f} °C  (right now)
   Lifetime Avg    : {avg_temp_raw/10:.1f} °C
   Lifetime Min    : {min_temp_raw/10:.1f} °C
   Lifetime Max    : {max_temp_raw/10:.1f} °C
+  Thermally ltd   : {chg_therml_s} s  (total charging time throttled by heat)""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  🏃  RUNTIME
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Uptime          : {uptime_fmt}
-  Total Op. Hours : {total_op_time_h:,} h  (lifetime battery usage)
-  Load Avg        : {load_str}  (1m · 5m · 15m)
+# ── 7. RUNTIME ────────────────────────────────────────────────────────────────
+lines.append(section("🏃  RUNTIME"))
+lines.append(f"""  Uptime          : {uptime_fmt}
+  Total Op. Hours : {total_op_h:,} h  (cumulative lifetime battery active hours)
+  Load Avg        : {load_str}  (1m · 5m · 15m)""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  💾  MEMORY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Total           : {mem_total:.1f} GB
-  Active          : {mem_active_gb:.2f} GB
-  Wired           : {mem_wired_gb:.2f} GB
-  Compressed      : {mem_compress_gb:.2f} GB
-  Inactive        : {mem_inactive_gb:.2f} GB
-  Free            : {mem_free_gb:.2f} GB
-  Pressure        : {mem_pressure_label(mem_free_gb * 1024, mem_total * 1024)}
+# ── 8. MEMORY ─────────────────────────────────────────────────────────────────
+lines.append(section("💾  MEMORY"))
+lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  →  {mem_label(mem_used_pct)}
+  Total           : {mem_total_gb:.1f} GB
+  Active          : {mem_act_gb:.2f} GB  (in use by apps)
+  Wired           : {mem_wired_gb:.2f} GB  (kernel, locked)
+  Compressed      : {mem_comp_gb:.2f} GB  (swapped via compressor)
+  Inactive        : {mem_inact_gb:.2f} GB  (reclaimable)
+  Free            : {mem_free_gb:.2f} GB""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  💿  DISK  ( / )
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ── 9. DISK ───────────────────────────────────────────────────────────────────
+lines.append(section("💿  DISK  ( / )"))
+lines.append(f"""  Usage           : {bar(disk_pct, reverse=True)}
   Total           : {disk_total} GB
-  Used            : {disk_used} GB  ({disk_pct}%)
-  Free            : {disk_free} GB
+  Used            : {disk_used} GB
+  Free            : {disk_free} GB""")
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ⚙️   POWER MANAGEMENT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Sleep (idle)    : {sleep_min if sleep_min else "disabled"}{" min" if sleep_min else ""}
-  Max Charge Ever : {max_charge_ever/1000:.2f} A  (lifetime peak)
-""")
+# ── 10. NETWORK ───────────────────────────────────────────────────────────────
+lines.append(section("🌐  NETWORK"))
+lines.append(f"""  IPv4  (en0)     : {ipv4}
+  IPv6            : {ipv6}
+  Public IP       : {pub_ip}
+  Wi-Fi SSID      : {wifi_ssid}
+  Wi-Fi Channel   : {wifi_ch}
+  Signal/Noise    : {rssi_str}
+  TX Rate         : {tx_rate}""")
+
+# ── 11. POWER MANAGEMENT ──────────────────────────────────────────────────────
+lines.append(section("⚙️   POWER MANAGEMENT"))
+lines.append(f"""  Power Source    : {pmset_source}
+  Sleep Timer     : {"disabled" if not sleep_min else str(sleep_min) + " min"}
+  Disk Sleep      : {"disabled" if not disksleep_min else str(disksleep_min) + " min"}
+  Half-dim        : {"enabled" if halfdim else "disabled"}
+  Lid Wake        : {"enabled" if lidwake else "disabled"}
+  Sleep prevented : {"Yes (assertion active)" if idle_prevented else "No"}
+  Low Power Mode  : {"On 🔋" if low_power_mode else "Off"}""")
+
+lines.append("")
+
+report = "\n".join(lines)
+
+# ── Export ───────────────────────────────────────────────────────────────────
+if _do_export:
+    # Strip box-drawing / emoji chars for clean plain-text file
+    clean = report
+    with open(_export_path, "w", encoding="utf-8") as f:
+        f.write(clean)
+    print(report)
+    print(f"\n✅  Report saved to: {_export_path}\n")
+else:
+    print(report)
