@@ -166,7 +166,17 @@ def collect(prev_net, prev_disk):
                 top_procs.append((cpu_p, mem_p, pid, name))
             except (ValueError, IndexError):
                 pass
-    top_by_cpu = sorted(top_procs, key=lambda x: x[0], reverse=True)[:5]
+    top_by_cpu = sorted(top_procs, key=lambda x: x[0], reverse=True)[:3]
+    top_by_mem = sorted(top_procs, key=lambda x: x[1], reverse=True)[:3]
+
+    # ── cpu count (for load-avg bar) ──
+    if HAS_PSUTIL:
+        num_cpus = _psutil.cpu_count(logical=True) or 8
+    else:
+        try:
+            num_cpus = int(run(["sysctl", "-n", "hw.logicalcpu"]) or 8)
+        except Exception:
+            num_cpus = 8
 
     # ── network I/O delta ──
     now_net_rx, now_net_tx = 0, 0
@@ -202,6 +212,8 @@ def collect(prev_net, prev_disk):
         "cpu_pct": pct, "cpu_user": cpu_user, "cpu_sys": cpu_sys,
         "freq": freq, "per_core": per_core,
         "top_by_cpu": top_by_cpu,
+        "top_by_mem": top_by_mem,
+        "num_cpus": num_cpus,
         "l1": l1, "l5": l5, "l15": l15,
         "mem_pct": mem_pct, "mem_total": mem_total,
         "active_gb": active_gb, "wired_gb": wired_gb,
@@ -270,6 +282,13 @@ def render(d, model, interval):
 
     freq_str = f"  ·  {d['freq']:.0f} MHz" if d["freq"] else ""
 
+    # Load avg bar (1m relative to cpu count = 100%)
+    load_bar_pct = min(100.0, d["l1"] / max(1, d["num_cpus"]) * 100)
+    # Trend: compare 1m to 5m
+    if   d["l1"] > d["l5"] + 0.05: load_trend = "↑"
+    elif d["l1"] < d["l5"] - 0.05: load_trend = "↓"
+    else:                           load_trend = "→"
+
     lines = [
         "",
         f"╔{'═' * (WIDTH - 2)}╗",
@@ -296,9 +315,9 @@ def render(d, model, interval):
         SEP,
         "  ⚙️   CPU",
         SEP,
-        f"  Usage          : {bar(d['cpu_pct'])}{freq_str}",
+        f"  Usage          : {bar(d['cpu_pct'], reverse=True)}{freq_str}",
         f"  User / System  : {d['cpu_user']:.1f}%  /  {d['cpu_sys']:.1f}%",
-        f"  Load Avg       : {d['l1']:.2f}  {d['l5']:.2f}  {d['l15']:.2f}  (1m · 5m · 15m)",
+        f"  Load Avg       : {bar(load_bar_pct, width=16, reverse=True)}  {d['l1']:.2f} {load_trend} {d['l5']:.2f} → {d['l15']:.2f}  (1m/5m/15m)",
         *([f"  Per-Core       : " + "  ".join(
             f"C{i}:{v:.0f}%" for i, v in enumerate(d["per_core"])
         )] if d["per_core"] else []),
@@ -306,23 +325,35 @@ def render(d, model, interval):
         SEP,
         "  💾  MEMORY",
         SEP,
-        f"  Usage          : {bar(d['mem_pct'])}",
+        f"  Usage          : {bar(d['mem_pct'], reverse=True)}",
         f"  Active / Wired : {d['active_gb']:.2f} GB  /  {d['wired_gb']:.2f} GB",
         f"  Compressed     : {d['comp_gb']:.2f} GB  ·  Swap : {d['swap_used']:.2f} / {d['swap_total']:.2f} GB",
         "",
         SEP,
-        "  📋  TOP PROCESSES  (by CPU)",
+        "  📋  TOP PROCESSES",
         SEP,
+        "  ── By CPU ──────────────────────────────────────────────────────",
         f"  {'PID':<7}  {'CPU%':>5}  {'MEM%':>5}  Process",
         f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*34}",
         *[f"  {pid:<7}  {cpu:>5.1f}  {mem:>5.1f}  {name}"
           for cpu, mem, pid, name in d["top_by_cpu"]],
+        "  ── By Memory ────────────────────────────────────────────────────",
+        f"  {'PID':<7}  {'CPU%':>5}  {'MEM%':>5}  Process",
+        f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*34}",
+        *[f"  {pid:<7}  {cpu:>5.1f}  {mem:>5.1f}  {name}"
+          for cpu, mem, pid, name in d["top_by_mem"]],
         "",
         SEP,
-        "  🌐  NETWORK  (since last refresh)        💿  DISK  (since last refresh)",
+        "  🌐  NETWORK  (since last refresh)",
         SEP,
-        f"  {rx_str:<30}  {dr_str}",
-        f"  {tx_str:<30}  {dw_str}",
+        f"  Download  : {rx_str}",
+        f"  Upload    : {tx_str}",
+        "",
+        SEP,
+        "  💿  DISK  (since last refresh)",
+        SEP,
+        f"  Read      : {dr_str}",
+        f"  Write     : {dw_str}",
         "",
         f"  Press Ctrl+C to exit",
         "",
