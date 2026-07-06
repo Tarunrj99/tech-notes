@@ -317,7 +317,7 @@ def render(d, model, interval):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     title_left  = f"🍎  Live Monitor  ·  {model}"
     title_right = f"↺ {interval}s"
-    pad = WIDTH - 4 - len(title_left) - len(title_right)
+    pad = WIDTH - 5 - len(title_left) - len(title_right)
     title_line = f"║ {title_left}{' ' * max(0, pad)}{title_right} ║"
 
     # Thermal dot
@@ -340,7 +340,9 @@ def render(d, model, interval):
         status = "Discharging 🔋"
 
     # Time label
-    if d["is_chg"]:
+    if d["full"]:
+        t_label = "Time to Full    : Fully charged"
+    elif d["is_chg"]:
         t = fmt_time(d["ttf"])
         if t == "—":
             if   d["soc"] >= 100: t = "Topping off"
@@ -388,6 +390,16 @@ def render(d, model, interval):
     elif d["l1"] < d["l5"] - 0.05: load_trend = "↓"
     else:                           load_trend = "→"
 
+    # Per-core rows — split into 4 cores per row so the line stays within WIDTH
+    per_core_rows = []
+    if d["per_core"]:
+        for ci in range(0, len(d["per_core"]), 4):
+            chunk = d["per_core"][ci:ci + 4]
+            prefix = "  Per-Core       : " if ci == 0 else " " * 20
+            per_core_rows.append(
+                prefix + "  ".join(f"C{ci + j}:{v:.0f}%" for j, v in enumerate(chunk))
+            )
+
     credit = "Created by Tarun Saini"
     lines = [
         "",
@@ -403,8 +415,8 @@ def render(d, model, interval):
         f"  Level          : {bar(d['soc'], decimals=0)}",
         f"  Status         : {status}",
         f"  {t_label}",
-        f"  Pack Power     : {abs(d['batt_pwr']):.2f} W  ({'→ charging into pack' if d['is_chg'] else '← draining from pack'})",
-        f"  Voltage        : {d['voltage']:.3f} V  ·  Current : {abs(d['amp']):.3f} A  ({'+ chg' if d['amp'] > 0 else '- dis'})",
+        f"  Pack Power     : {abs(d['batt_pwr']):.2f} W  ({'→ charging' if d['is_chg'] else ('≈ idle  (battery full)' if d['full'] or abs(d['batt_pwr']) < 0.5 else '← draining')})",
+        f"  Voltage        : {d['voltage']:.3f} V  ·  Current : {abs(d['amp']):.3f} A  ({'+ chg' if d['amp'] > 0.01 else ('idle' if abs(d['amp']) <= 0.01 else '- dis')})",
         f"  Temperature    : {d['temp']:.1f} °C  ·  Low Power : {'On 🟡' if d['low_pwr'] else 'Off'}",
         *([ f"  Today Range    : {d['daily_min']}% – {d['daily_max']}%  (min / max SOC today)" ]
            if d["daily_max"] > 0 else []),
@@ -425,11 +437,9 @@ def render(d, model, interval):
         SEP,
         f"  Usage          : {bar(d['cpu_pct'], reverse=True)}{freq_str}",
         f"  User / System  : {d['cpu_user']:.1f}%  /  {d['cpu_sys']:.1f}%",
-        f"  Load Avg       : {bar(load_bar_pct, width=16, reverse=True)}  {d['l1']:.2f} {load_trend} {d['l5']:.2f} → {d['l15']:.2f}  (1m/5m/15m)",
+        f"  Load Avg       : {bar(load_bar_pct, width=16, reverse=True)}  {d['l1']:.2f}{load_trend} · {d['l5']:.2f} · {d['l15']:.2f}",
         f"  Thermal        : {d['thermal']}  {therm_dot}",
-        *([f"  Per-Core       : " + "  ".join(
-            f"C{i}:{v:.0f}%" for i, v in enumerate(d["per_core"])
-        )] if d["per_core"] else []),
+        *per_core_rows,
         "",
         SEP,
         "  💾  MEMORY",
