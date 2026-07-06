@@ -90,16 +90,24 @@ fi
 _spin "Fetching report"
 
 TMP_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/mac_battery_info_XXXXXXXX")
-trap 'rm -f "${TMP_SCRIPT}"' EXIT
+TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/battery_report_XXXXXXXX")
+trap 'rm -f "${TMP_SCRIPT}" "${TMP_OUT}"' EXIT
 
 if ! curl -fsSL "${SCRIPT_URL}" -o "${TMP_SCRIPT}" 2>/dev/null; then
     _spin
     printf "  Download failed — check your internet connection.\n" >&2; exit 1
 fi
 
-# ── 5. Clear spinner and run the report ────────────────────────────────────
-# Hold "Fetching report" visible briefly so the animation is seen, then erase.
-sleep 0.4
+# ── 5. Generate and display the report ─────────────────────────────────────
+# Keep spinner running while Python collects system data and builds the report
+# (~15 s).  Stdout is captured to TMP_OUT so the spinner line stays clean;
+# errors still stream to stderr.  After Python exits we clear the line and
+# print the report.
+_spin "Generating report"
+
+python3 "${TMP_SCRIPT}" "$@" > "${TMP_OUT}"
+
+sleep 0.3
 _spin
 
-python3 "${TMP_SCRIPT}" "$@"
+cat "${TMP_OUT}"
