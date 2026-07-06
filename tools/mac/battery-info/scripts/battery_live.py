@@ -77,6 +77,10 @@ def collect(prev_net, prev_disk):
     temp    = ri(raw, r'"Temperature"\s*=\s*(\d+)') / 100
     amp_raw = ri(raw, r'"Amperage"\s*=\s*(\d+)')
     amp     = signed64(amp_raw) / 1000   # A, +charging / -discharging
+    raw_max_cap = ri(raw, r'"AppleRawMaxCapacity"\s*=\s*(\d+)')
+    design_cap  = ri(raw, r'"DesignCapacity"\s*=\s*(\d+)')
+    cycle_cnt   = ri(raw, r'"CycleCount"\s*=\s*(\d+)')
+    health_pct  = round(raw_max_cap / design_cap * 100) if design_cap else 0
 
     # ── power telemetry ──
     ptd_m = re.search(r'"PowerTelemetryData"\s*=\s*\{([^}]+)\}', raw)
@@ -178,6 +182,56 @@ def collect(prev_net, prev_disk):
         except Exception:
             num_cpus = 8
 
+    # ── thermal pressure ──
+    therm_raw = run(["sysctl", "-n", "kern.thermstate"])
+    if therm_raw:
+        thermal = therm_raw.strip().capitalize()
+    else:
+        pmset_therm = run(["pmset", "-g", "therm"])
+        # "No thermal/performance warning has been recorded" → Normal
+        # CPU_Speed_Limit < 100 → CPU Limited; explicit throttle keywords → Throttled
+        speed_m = re.search(r'CPU_Speed_Limit\s*=\s*(\d+)', pmset_therm)
+        if speed_m and int(speed_m.group(1)) < 100:
+            thermal = "CPU Limited"
+        elif "performance warning" in pmset_therm.lower() and "no performance" not in pmset_therm.lower():
+            thermal = "Throttled"
+        else:
+            thermal = "Normal"
+
+    # ── system uptime ──
+    if HAS_PSUTIL:
+        uptime_secs = time.time() - _psutil.boot_time()
+    else:
+        bt_raw = run(["sysctl", "kern.boottime"])
+        bt_m   = re.search(r'sec\s*=\s*(\d+)', bt_raw)
+        uptime_secs = time.time() - int(bt_m.group(1)) if bt_m else 0
+    up_d = int(uptime_secs // 86400)
+    up_h = int((uptime_secs % 86400) // 3600)
+    up_m = int((uptime_secs % 3600) // 60)
+    if up_d:
+        uptime_str = f"{up_d}d {up_h:02d}h {up_m:02d}m"
+    elif up_h:
+        uptime_str = f"{up_h}h {up_m:02d}m"
+    else:
+        uptime_str = f"{up_m}m"
+
+    # ── wifi ssid ──
+    _AIRPORT = ("/System/Library/PrivateFrameworks/Apple80211.framework"
+                "/Versions/Current/Resources/airport")
+    airport_out = run([_AIRPORT, "-I"])
+    _sm = re.search(r'^\s+SSID:\s+(.+)$', airport_out, re.MULTILINE)
+    if _sm:
+        wifi_ssid = _sm.group(1).strip()
+    else:
+        for _iface in ["en0", "en1", "en2"]:
+            _ipconf = run(["ipconfig", "getsummary", _iface])
+            _sm2 = re.search(r'^\s*SSID\s*:\s*(.+)$', _ipconf, re.MULTILINE)
+            if _sm2 and _sm2.group(1).strip() not in ("", "<redacted>"):
+                wifi_ssid = _sm2.group(1).strip()
+                break
+        else:
+            wifi_ssid = "N/A"
+
     # ── network I/O delta ──
     now_net_rx, now_net_tx = 0, 0
     if HAS_PSUTIL:
@@ -209,6 +263,8 @@ def collect(prev_net, prev_disk):
         "wall_w": wall_w, "sys_load": sys_load, "batt_pwr": batt_pwr,
         "v_in": v_in, "a_in": a_in, "adp_w": adp_w,
         "ttf": ttf, "tte": tte,
+        "health_pct": health_pct, "cycle_cnt": cycle_cnt,
+        "thermal": thermal, "uptime_str": uptime_str, "wifi_ssid": wifi_ssid,
         "cpu_pct": pct, "cpu_user": cpu_user, "cpu_sys": cpu_sys,
         "freq": freq, "per_core": per_core,
         "top_by_cpu": top_by_cpu,
@@ -233,6 +289,15 @@ def render(d, model, interval):
     title_right = f"↺ {interval}s"
     pad = WIDTH - 2 - len(title_left) - len(title_right)
     title_line = f"║ {title_left}{' ' * max(0, pad)}{title_right} ║"
+
+    # Thermal dot
+    therm_lower = d["thermal"].lower()
+    if "normal" in therm_lower or "ok" in therm_lower:
+        therm_dot = "🟢"
+    elif "moderate" in therm_lower or "limited" in therm_lower:
+        therm_dot = "🟡"
+    else:
+        therm_dot = "🔴"
 
     # Battery state
     if d["full"]:
@@ -280,7 +345,8 @@ def render(d, model, interval):
     if dw_kb >= 1024: dw_str = f"{dw_kb/1024:.2f} MB/s W"
     else:             dw_str = f"{dw_kb:.1f} KB/s W"
 
-    freq_str = f"  ·  {d['freq']:.0f} MHz" if d["freq"] else ""
+    freq_str    = f"  ·  {d['freq']:.0f} MHz" if d["freq"] else ""
+    header_sub  = f"{now}  ·  Up: {d['uptime_str']}"
 
     # Load avg bar (1m relative to cpu count = 100%)
     load_bar_pct = min(100.0, d["l1"] / max(1, d["num_cpus"]) * 100)
@@ -293,7 +359,7 @@ def render(d, model, interval):
         "",
         f"╔{'═' * (WIDTH - 2)}╗",
         title_line,
-        f"║  {now:^{WIDTH - 4}}  ║",
+        f"║  {header_sub:<{WIDTH - 6}}  ║",
         f"╚{'═' * (WIDTH - 2)}╝",
         "",
         SEP,
@@ -304,6 +370,7 @@ def render(d, model, interval):
         f"  {t_label}",
         f"  Voltage        : {d['voltage']:.3f} V  ·  Temp : {d['temp']:.1f} °C",
         f"  Current        : {abs(d['amp']):.3f} A  ({'+ charging' if d['amp'] > 0 else '- discharging'})",
+        f"  Health         : {d['health_pct']}%  ·  Cycles : {d['cycle_cnt']}",
         "",
         SEP,
         "  ⚡  POWER FLOW",
@@ -318,6 +385,7 @@ def render(d, model, interval):
         f"  Usage          : {bar(d['cpu_pct'], reverse=True)}{freq_str}",
         f"  User / System  : {d['cpu_user']:.1f}%  /  {d['cpu_sys']:.1f}%",
         f"  Load Avg       : {bar(load_bar_pct, width=16, reverse=True)}  {d['l1']:.2f} {load_trend} {d['l5']:.2f} → {d['l15']:.2f}  (1m/5m/15m)",
+        f"  Thermal        : {d['thermal']}  {therm_dot}",
         *([f"  Per-Core       : " + "  ".join(
             f"C{i}:{v:.0f}%" for i, v in enumerate(d["per_core"])
         )] if d["per_core"] else []),
@@ -346,6 +414,7 @@ def render(d, model, interval):
         SEP,
         "  🌐  NETWORK  (since last refresh)",
         SEP,
+        f"  WiFi      : {d['wifi_ssid']}",
         f"  Download  : {rx_str}",
         f"  Upload    : {tx_str}",
         "",
