@@ -491,13 +491,15 @@ idle_prevented  = "PreventUserIdleSystemSleep" in pmset_assert and re.search(r"P
 
 # Override time_to_full/time_to_empty with pmset value — matches macOS menu bar exactly.
 # ioreg AvgTimeToEmpty/Full lags behind pmset which applies the same smoothing macOS uses.
+# Only apply if pmset gives a non-zero estimate (0:00 means "not yet computed").
 _pmset_time_m = re.search(r'(\d+):(\d+) remaining', pmset_batt)
 if _pmset_time_m:
     _pm_mins = int(_pmset_time_m.group(1)) * 60 + int(_pmset_time_m.group(2))
-    if is_charging:
-        time_to_full = _pm_mins
-    else:
-        time_to_empty = _pm_mins
+    if _pm_mins > 0:          # skip 0:00 — macOS hasn't finished estimating yet
+        if is_charging:
+            time_to_full = _pm_mins
+        else:
+            time_to_empty = _pm_mins
 
 # ── CPU usage (from top — always available) ──────────────────────────────────
 top_raw    = run(["top", "-l", "1", "-n", "0"])
@@ -688,7 +690,12 @@ else:
 lines.append(section("🔋  BATTERY — STATE"))
 if is_charging:
     _ttf = fmt_time(time_to_full)
-    _ttf_str = "Topping off" if soc >= 100 and _ttf == "calculating…" else _ttf
+    if _ttf == "calculating…":
+        if soc >= 100:   _ttf_str = "Topping off"
+        elif soc >= 95:  _ttf_str = "Almost full"
+        else:            _ttf_str = "Estimating…"
+    else:
+        _ttf_str = _ttf
     time_line = f"  Time to Full    : {_ttf_str}"
 else:
     time_line = f"  Time Remaining  : {fmt_time(time_to_empty)}"

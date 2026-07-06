@@ -99,8 +99,9 @@ def collect(prev_net, prev_disk):
     pm_m = re.search(r'(\d+):(\d+)\s+remaining', pmset_batt)
     if pm_m:
         pm_mins = int(pm_m.group(1)) * 60 + int(pm_m.group(2))
-        if is_chg: ttf = pm_mins
-        else:      tte = pm_mins
+        if pm_mins > 0:         # skip 0:00 — not yet computed
+            if is_chg: ttf = pm_mins
+            else:      tte = pm_mins
 
     # ── CPU ──
     if HAS_PSUTIL:
@@ -312,8 +313,11 @@ def render(d, model, interval):
     # Time label
     if d["is_chg"]:
         t = fmt_time(d["ttf"])
-        t_val = "Topping off" if d["soc"] >= 100 and t == "—" else t
-        t_label = f"Time to Full    : {t_val}"
+        if t == "—":
+            if   d["soc"] >= 100: t = "Topping off"
+            elif d["soc"] >= 95:  t = "Almost full"
+            else:                 t = "Estimating…"
+        t_label = f"Time to Full    : {t}"
     else:
         t_label = f"Time Remaining  : {fmt_time(d['tte'])}"
 
@@ -372,7 +376,7 @@ def render(d, model, interval):
         f"  {t_label}",
         f"  Voltage        : {d['voltage']:.3f} V  ·  Temp : {d['temp']:.1f} °C",
         f"  Current        : {abs(d['amp']):.3f} A  ({'+ charging' if d['amp'] > 0 else '- discharging'})",
-        f"  Health         : {d['health_pct']}%  ·  Cycles : {d['cycle_cnt']}",
+        f"  Health         : {bar(d['health_pct'], width=16)}  ·  Cycles : {d['cycle_cnt']}",
         "",
         SEP,
         "  ⚡  POWER FLOW",
