@@ -9,7 +9,7 @@
 #   Normal report:
 #     curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash
 #
-#   Export report to file (saved to ~/Desktop/battery-report-<timestamp>.txt):
+#   Export to Desktop (battery-report-<timestamp>.txt):
 #     curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash -s -- --export
 #
 #   Export to a custom path:
@@ -17,84 +17,121 @@
 #
 set -euo pipefail
 
-RAW_BASE="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info"
-SCRIPT_URL="${RAW_BASE}/scripts/battery_info.py"
-REQ_URL="${RAW_BASE}/requirements.txt"
+SCRIPT_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/scripts/battery_info.py"
+
+# ── Terminal animation helpers ─────────────────────────────────────────────
+#   Works when stdout is a TTY (interactive terminal).
+#   Falls back to plain echoes when piped / redirected.
+_HAS_TTY=false
+[ -t 1 ] && _HAS_TTY=true
+
+_SPIN_PID=""
+_LINES=0   # number of status lines printed during setup (for cleanup)
+
+# Start an animated braille spinner in the background, overwriting current line.
+_spin_start() {
+    if $_HAS_TTY; then
+        ( i=0; f="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+          while true; do
+              printf "\r  %s  %s   " "${f:$((i % 10)):1}" "$1"
+              sleep 0.08; i=$(( i + 1 ))
+          done ) &
+        _SPIN_PID=$!
+    fi
+}
+
+# Kill the spinner and erase its line.
+_spin_stop() {
+    if [ -n "$_SPIN_PID" ]; then
+        kill "$_SPIN_PID" 2>/dev/null
+        wait "$_SPIN_PID" 2>/dev/null || true
+        _SPIN_PID=""
+    fi
+    if $_HAS_TTY; then printf "\r\033[K"; fi
+}
+
+# Print a tracked status line (will be erased later by _clear_setup).
+_say() { printf "  %s\n" "$1"; _LINES=$(( _LINES + 1 )); }
+
+# Erase the most-recently printed status line (for in-place replacement).
+_unsay() {
+    if $_HAS_TTY; then printf "\033[A\033[2K"; fi
+    _LINES=$(( _LINES - 1 ))
+}
+
+# Erase all tracked setup lines, leaving a clean terminal for the report.
+_clear_setup() {
+    if $_HAS_TTY; then
+        while [ "$_LINES" -gt 0 ]; do
+            printf "\033[A\033[2K"
+            _LINES=$(( _LINES - 1 ))
+        done
+    fi
+    _LINES=0
+}
 
 # ── 1. macOS check ─────────────────────────────────────────────────────────
 if [[ "$(uname -s)" != "Darwin" ]]; then
-    echo "❌  This script is macOS-only. Exiting."
-    exit 1
+    echo "  This script is macOS-only."; exit 1
 fi
 
 # ── 2. Python 3 check ──────────────────────────────────────────────────────
+_spin_start "Checking Python"
+
 if ! command -v python3 &>/dev/null; then
-    echo ""
-    echo "❌  Python 3 not found on this machine."
-    echo ""
-    echo "    Install options:"
-    echo "      brew install python3          (via Homebrew)"
-    echo "      https://www.python.org/downloads/   (official installer)"
-    echo ""
-    exit 1
+    _spin_stop
+    echo ""; echo "  Python 3 not found."; echo ""
+    echo "  Install options:"
+    echo "    brew install python3"
+    echo "    https://www.python.org/downloads/"
+    echo ""; exit 1
 fi
 
 PY_MAJOR=$(python3 -c "import sys; print(sys.version_info.major)")
 PY_MINOR=$(python3 -c "import sys; print(sys.version_info.minor)")
 
 if [[ "$PY_MAJOR" -lt 3 ]] || { [[ "$PY_MAJOR" -eq 3 ]] && [[ "$PY_MINOR" -lt 8 ]]; }; then
-    echo "❌  Python 3.8+ required. Found: ${PY_MAJOR}.${PY_MINOR}"
-    echo "    Upgrade: brew install python3"
+    _spin_stop
+    echo "  Python 3.8+ required. Found: ${PY_MAJOR}.${PY_MINOR}.  Upgrade: brew install python3"
     exit 1
 fi
 
-echo "✅  Python ${PY_MAJOR}.${PY_MINOR} detected"
+_spin_stop
+_say "Python ${PY_MAJOR}.${PY_MINOR}"
 
-# ── 3. Install required packages ───────────────────────────────────────────
-echo "📦  Checking dependencies…"
+# ── 3. psutil check / install ──────────────────────────────────────────────
+_spin_start "Checking dependencies"
 
-install_pkg() {
-    local pkg="$1"
-    if python3 -c "import ${pkg}" 2>/dev/null; then
-        echo "    ✅  ${pkg} already installed"
-        return
-    fi
-    echo "    📥  Installing ${pkg}…"
-    # 1. Standard user install
-    if python3 -m pip install --quiet --user "${pkg}" 2>/dev/null; then
-        echo "    ✅  ${pkg} installed"
-        return
-    fi
-    # 2. PEP 668 (externally-managed Python, e.g. Homebrew Python on macOS 14+)
-    if python3 -m pip install --quiet --user --break-system-packages "${pkg}" 2>/dev/null; then
-        echo "    ✅  ${pkg} installed (PEP 668 override)"
-        return
-    fi
-    # 3. System-wide (may need sudo)
-    if python3 -m pip install --quiet "${pkg}" 2>/dev/null; then
-        echo "    ✅  ${pkg} installed (system)"
-        return
-    fi
-    echo "    ⚠️   ${pkg} install failed — basic mode (CPU per-core stats will be skipped)"
-    echo "         Manual fix: python3 -m pip install --user --break-system-packages ${pkg}"
-}
+if ! python3 -c "import psutil" 2>/dev/null; then
+    _spin_stop
+    _say "Installing psutil..."
+    _spin_start "Installing psutil"
 
-# psutil: optional — enables CPU per-core stats, disk I/O, network I/O
-install_pkg psutil
+    if   python3 -m pip install --quiet --user psutil                         2>/dev/null ||
+         python3 -m pip install --quiet --user --break-system-packages psutil 2>/dev/null ||
+         python3 -m pip install --quiet psutil                                2>/dev/null; then
+        _spin_stop; _unsay; _say "psutil installed"
+    else
+        _spin_stop; _unsay; _say "psutil unavailable — running in basic mode"
+    fi
+else
+    _spin_stop
+fi
 
-# ── 4. Download & run the report ───────────────────────────────────────────
-echo "🔍  Fetching report script…"
+# ── 4. Download report script ──────────────────────────────────────────────
 TMP_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/mac_battery_info_XXXXXXXX")
-
-# Always delete the temp file when the script exits (success, error, or signal).
 trap 'rm -f "${TMP_SCRIPT}"' EXIT
 
+_spin_start "Fetching report"
 if ! curl -fsSL "${SCRIPT_URL}" -o "${TMP_SCRIPT}" 2>/dev/null; then
-    echo "❌  Could not download the script. Check your internet connection."
-    exit 1
+    _spin_stop
+    echo "  Download failed — check your internet connection."; exit 1
 fi
+_spin_stop
 
-echo ""
+# ── 5. Clear setup lines and run the report ────────────────────────────────
+#   All setup lines disappear; the Python report output follows cleanly.
+_clear_setup
 
-# Pass all arguments (e.g. --export, --export /path) straight to Python
+# Pass all arguments (e.g. --export, --export /path) straight to Python.
 python3 "${TMP_SCRIPT}" "$@"

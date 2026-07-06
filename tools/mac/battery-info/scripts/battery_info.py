@@ -681,9 +681,7 @@ if ext_conn:
 else:
     lines.append(f"""  Power Source    : {pmset_source}
   System Load     : {sys_load_w:.2f} W  ← CPU + GPU + peripherals
-  Battery Out     : {display_bat_w:.2f} W  ← draining from pack
-  ─────────────────────────────────────────────────────────────────
-  Drain rate      : {amp_abs_ma/1000:.3f} A × {bat_volt_mv/1000:.3f} V = {pack_pw_mw/1000:.2f} W""")
+  Battery Out     : {display_bat_w:.2f} W  ← draining from pack""")
 
 # ── 5. BATTERY — STATE ────────────────────────────────────────────────────────
 lines.append(section("🔋  BATTERY — STATE"))
@@ -699,8 +697,7 @@ lines.append(f"""  Level           : {bar(soc)}
 
 if cell_volts:
     cell_str = "  ".join(f"Cell{i+1}: {v/1000:.3f}V" for i, v in enumerate(cell_volts))
-    pack_sum = sum(cell_volts)
-    lines.append(f"  Cell Voltages   : {cell_str}  (pack sum: {pack_sum/1000:.3f} V)")
+    lines.append(f"  Cell Voltages   : {cell_str}")
 
 _ncr = decode_not_chg(not_chg_rsn)
 if _ncr:

@@ -13,11 +13,12 @@ curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac
 ```
 
 > This one command does everything:
-> 1. Checks that Python 3.8+ is installed
-> 2. Auto-installs the `psutil` package if missing (handles PEP 668 / Homebrew Python)
-> 3. Downloads `battery_info.py` to a temp file
-> 4. Runs the full report
-> 5. Cleans up the temp file
+> 1. Shows an animated spinner during setup — all setup lines disappear before the report runs
+> 2. Checks that Python 3.8+ is installed
+> 3. Auto-installs the `psutil` package if missing (handles PEP 668 / Homebrew Python)
+> 4. Downloads `battery_info.py` to a temp file
+> 5. Runs the full report on a clean terminal
+> 6. Cleans up the temp file
 
 ---
 
@@ -94,7 +95,6 @@ All other data comes from macOS built-in tools:
 | Serial | Mac serial number |
 | macOS | Version, codename (Sequoia / Sonoma / etc.), and build number |
 | Hostname | Computer name on the network |
-| Python | Python version running the script |
 
 ---
 
@@ -153,16 +153,16 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 | Time to Full / Remaining | Estimated time based on current charge/drain rate |
 | Battery Voltage | Pack voltage right now (typically 10–13V for a 3-cell pack) |
 | Current Now | Amps flowing in (+) or out (-) of the pack |
-| **Pack Power** | True watts going into/out of the battery (Amperage × Pack Voltage) |
+| **Pack Power** | True watts going into/out of the battery (from PMU telemetry) |
 | Low Power Mode | On/Off |
 | Today Range | Minimum and maximum SOC % seen today |
-| **Cell Voltages** | Individual voltage of each cell + pack sum cross-check |
+| **Cell Voltages** | Individual voltage of each cell in the pack |
 
 > **Pack Power vs Wall Input:** Pack Power (~20W) ≠ Wall Input (~29W) because the system also consumes ~9W. Wall Input = System Load + Battery Power.
 
 ---
 
-### 6. 🔋 Battery — Health
+### 6. 🩺 Battery — Health
 | Field | What it shows |
 |---|---|
 | **Health %** | `(Max Capacity / Design Capacity) × 100` — the standard SoH metric |
@@ -275,11 +275,11 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 | Signal / Noise | RSSI signal strength vs noise floor in dBm |
 | TX Rate | 802.11 PHY transmit rate negotiated with access point |
 | RX / TX (since boot) | Total GB received and sent on all `en*` interfaces since boot |
-| Per-interface | Breakdown per en0, en1, etc. (requires `psutil`) |
+| Per-interface | Breakdown per en0, en1, etc. (from `netstat` hardware counters) |
 
 ---
 
-### 14. ⚙️ Power Management
+### 14. 💤 Power Management
 | Field | What it shows |
 |---|---|
 | Power Source | AC Power or Battery Power |
