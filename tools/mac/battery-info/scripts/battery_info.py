@@ -646,8 +646,8 @@ lines.append(f"""  Model           : {model}  ({model_id}){"  [" + model_num + "
   CPU Cores       : {pcpu} physical · {lcpu} logical
   RAM             : {mem_str}
   Disk            : {ssd_model}  ({ssd_capacity})
-  Serial          : {mac_serial}
   macOS           : {macos_ver}{_codename_str}  (build {macos_bld})
+  Serial          : {mac_serial}
   Hostname        : {hostname}""")
 
 # ── 2. CHARGER / ADAPTER ──────────────────────────────────────────────────────
@@ -737,14 +737,6 @@ lines.append(f"""  Uptime          : {uptime_fmt}
   Load Avg        : {load_str}  (1m · 5m · 15m)
   Processes       : {total_procs} running""")
 
-# ── 8. GPU & DISPLAY ──────────────────────────────────────────────────────────
-lines.append(section("🎮  GPU & DISPLAY"))
-lines.append(f"""  GPU             : {gpu_model}  ({gpu_cores}-core GPU)
-  Metal           : {gpu_metal}
-  Display Type    : {disp_type}
-  Resolution      : {disp_res}
-  Connection      : {disp_conn}""")
-
 # ── 9. CPU ────────────────────────────────────────────────────────────────────
 lines.append(section("⚙️   CPU"))
 _psutil_note = "" if HAS_PSUTIL else "  (install psutil for per-core breakdown)"
@@ -758,7 +750,27 @@ if cpu_per_core:
     core_bars = "  ".join(f"C{i}: {p:.0f}%" for i, p in enumerate(cpu_per_core))
     lines.append(f"  Per-Core        : {core_bars}")
 
-# ── 10. TOP PROCESSES ─────────────────────────────────────────────────────────
+# ── 10. GPU & DISPLAY ─────────────────────────────────────────────────────────
+lines.append(section("🎮  GPU & DISPLAY"))
+lines.append(f"""  GPU             : {gpu_model}  ({gpu_cores}-core GPU)
+  Metal           : {gpu_metal}
+  Display Type    : {disp_type}
+  Resolution      : {disp_res}
+  Connection      : {disp_conn}""")
+
+# ── 11. MEMORY ────────────────────────────────────────────────────────────────
+lines.append(section("💾  MEMORY"))
+_swap_note = " (encrypted)" if swap_enc else ""
+lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  ({mem_label(mem_used_pct)})
+  Total           : {mem_total_gb:.1f} GB
+  Active          : {mem_act_gb:.2f} GB  (in use by apps)
+  Wired           : {mem_wired_gb:.2f} GB  (kernel, locked)
+  Compressed      : {mem_comp_gb:.2f} GB  (swapped via compressor)
+  Inactive        : {mem_inact_gb:.2f} GB  (reclaimable)
+  Free            : {mem_free_gb:.2f} GB
+  Swap            : {swap_used_gb:.2f} GB used / {swap_total_gb:.2f} GB total{_swap_note}""")
+
+# ── 12. TOP PROCESSES ─────────────────────────────────────────────────────────
 lines.append(section("📋  TOP PROCESSES"))
 _phdr = f"  {'PID':<7}  {'CPU%':>5}  {'MEM%':>5}  Process"
 _pdiv = f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*35}"
@@ -776,19 +788,7 @@ if top_procs:
 else:
     lines.append("  (unable to read process list)")
 
-# ── 11. MEMORY ─────────────────────────────────────────────────────────────────
-lines.append(section("💾  MEMORY"))
-_swap_note = " (encrypted)" if swap_enc else ""
-lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  ({mem_label(mem_used_pct)})
-  Total           : {mem_total_gb:.1f} GB
-  Active          : {mem_act_gb:.2f} GB  (in use by apps)
-  Wired           : {mem_wired_gb:.2f} GB  (kernel, locked)
-  Compressed      : {mem_comp_gb:.2f} GB  (swapped via compressor)
-  Inactive        : {mem_inact_gb:.2f} GB  (reclaimable)
-  Free            : {mem_free_gb:.2f} GB
-  Swap            : {swap_used_gb:.2f} GB used / {swap_total_gb:.2f} GB total{_swap_note}""")
-
-# ── 12. DISK ──────────────────────────────────────────────────────────────────
+# ── 13. DISK ──────────────────────────────────────────────────────────────────
 lines.append(section("💿  DISK  ( / )"))
 _io_lifetime = ""
 if disk_read_gb or disk_write_gb:
