@@ -183,9 +183,9 @@ def fmt_thermal_time(seconds):
 ioreg_raw = run(["ioreg", "-r", "-c", "AppleSmartBattery"])
 
 # ── Battery ─────────────────────────────────────────────────────────
-soc          = ioreg_int(ioreg_raw, r'"StateOfCharge"\s*=\s*(\d+)')
+soc          = ioreg_int(ioreg_raw, r'"CurrentCapacity"\s*=\s*(\d+)')
 if soc == 0:
-    soc      = ioreg_int(ioreg_raw, r'"CurrentCapacity"\s*=\s*(\d+)')
+    soc      = ioreg_int(ioreg_raw, r'"StateOfCharge"\s*=\s*(\d+)')
 
 raw_max_cap  = ioreg_int(ioreg_raw, r'"AppleRawMaxCapacity"\s*=\s*(\d+)')
 design_cap   = ioreg_int(ioreg_raw, r'"DesignCapacity"\s*=\s*(\d+)')
@@ -417,15 +417,27 @@ if disk_total_gb == 0:
 disk_pct = int(((disk_total_gb - disk_free_gb) / disk_total_gb * 100) if disk_total_gb else 0)
 
 # ── Network ──────────────────────────────────────────────────────────────────
-# Try both en0 and en1 for WiFi SSID
 wifi_ssid = ""
 wifi_iface = ""
+
+# Primary: ipconfig getsummary — reliable on macOS 13+ where networksetup can lie
 for iface in ["en0", "en1", "en2"]:
-    _w = run(["networksetup", "-getairportnetwork", iface])
-    if "Current Wi-Fi Network:" in _w:
-        wifi_ssid = _w.replace("Current Wi-Fi Network:", "").strip()
+    _sum = run(["ipconfig", "getsummary", iface])
+    _ssid_m = re.search(r'^\s*SSID\s*:\s*(.+)', _sum, re.MULTILINE)
+    if _ssid_m and _ssid_m.group(1).strip():
+        wifi_ssid = _ssid_m.group(1).strip()
         wifi_iface = iface
         break
+
+# Fallback: networksetup (older macOS)
+if not wifi_ssid:
+    for iface in ["en0", "en1", "en2"]:
+        _w = run(["networksetup", "-getairportnetwork", iface])
+        if "Current Wi-Fi Network:" in _w:
+            wifi_ssid = _w.replace("Current Wi-Fi Network:", "").strip()
+            wifi_iface = iface
+            break
+
 wifi_connected = bool(wifi_ssid)
 
 ipv4 = run(["ipconfig", "getifaddr", "en0"])
@@ -446,11 +458,11 @@ rssi_str  = "N/A"
 wifi_ch   = "N/A"
 tx_rate   = "N/A"
 if wifi_connected and wifi_info:
-    rssi_m    = re.search(r"Signal / Noise.*?(-\d+)\s*/\s*(-\d+)", wifi_info)
+    rssi_m    = re.search(r"Signal / Noise[:\s]+(-\d+)\s*dBm\s*/\s*(-\d+)\s*dBm", wifi_info)
     rssi_str  = f"{rssi_m.group(1)} dBm / {rssi_m.group(2)} dBm" if rssi_m else "N/A"
     channel_m = re.search(r"Channel:\s*(.+)", wifi_info)
     wifi_ch   = channel_m.group(1).strip() if channel_m else "N/A"
-    tx_rate_m = re.search(r"Tx Rate:\s*([\d.]+)", wifi_info)
+    tx_rate_m = re.search(r"(?:Tx Rate|Transmit Rate):\s*([\d.]+)", wifi_info)
     tx_rate   = f"{tx_rate_m.group(1)} Mbps" if tx_rate_m else "N/A"
 
 # ── pmset ────────────────────────────────────────────────────────────────────
@@ -472,6 +484,16 @@ low_power_mode  = int(lowpwrm_m.group(1)) if lowpwrm_m else 0
 
 pmset_assert    = run(["pmset", "-g", "assertions"])
 idle_prevented  = "PreventUserIdleSystemSleep" in pmset_assert and re.search(r"PreventUserIdleSystemSleep\s+1", pmset_assert)
+
+# Override time_to_full/time_to_empty with pmset value — matches macOS menu bar exactly.
+# ioreg AvgTimeToEmpty/Full lags behind pmset which applies the same smoothing macOS uses.
+_pmset_time_m = re.search(r'(\d+):(\d+) remaining', pmset_batt)
+if _pmset_time_m:
+    _pm_mins = int(_pmset_time_m.group(1)) * 60 + int(_pmset_time_m.group(2))
+    if is_charging:
+        time_to_full = _pm_mins
+    else:
+        time_to_empty = _pm_mins
 
 # ── CPU usage (from top — always available) ──────────────────────────────────
 top_raw    = run(["top", "-l", "1", "-n", "0"])
@@ -697,7 +719,7 @@ lines.append(section("🩺  BATTERY — HEALTH"))
 lines.append(f"""  Health          : {bar(health_pct)}  →  {health_label(health_pct)}
   Max Capacity    : {raw_max_cap:,} mAh  ←  design was {design_cap:,} mAh  (lost {design_cap - raw_max_cap:,} mAh)
   Nominal Cap     : {nominal_cap:,} mAh
-  Current Charge  : {raw_cur_cap:,} mAh  ({raw_cur_cap/raw_max_cap*100:.0f}% of max)
+  Current Charge  : {raw_cur_cap:,} mAh
   Qmax (cells)    : {", ".join(str(q) + " mAh" for q in qmax_vals) if qmax_vals else "N/A"}
   Cycle Count     : {bar(cycle_pct_used, 20, reverse=True)}
                     {cycle_count} used  /  {design_cycle} rated  (~{cycles_remain} remaining)
