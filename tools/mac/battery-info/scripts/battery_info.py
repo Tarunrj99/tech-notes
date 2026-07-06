@@ -4,15 +4,15 @@ battery_info.py — Comprehensive Mac Power, Battery & System Report
 
 Data sources:
   - ioreg (AppleSmartBattery)   : battery, adapter, power telemetry
-  - system_profiler             : hardware model, chip, RAM
-  - sysctl                      : CPU cores, memory, boot time, load
+  - system_profiler             : hardware, GPU/display, storage model
+  - sysctl                      : CPU cores, memory, boot time, load, swap
   - pmset                       : power source, sleep settings, assertions
   - vm_stat                     : memory pages breakdown
-  - top                         : real-time CPU usage %
-  - df                          : disk space
+  - top / ps                    : real-time CPU usage, top processes
+  - diskutil                    : accurate APFS container disk space
   - networksetup / scutil       : WiFi SSID, IP addresses
   - netstat                     : network I/O bytes per interface
-  - iostat                      : disk I/O (tps, throughput)
+  - iostat                      : real-time disk I/O (tps, throughput)
   - psutil (optional, pip)      : CPU per-core %, enhanced I/O counters
 
 macOS only (Apple Silicon + Intel). Core features work with no pip packages.
@@ -125,6 +125,21 @@ def mem_label(used_pct):
     return "High pressure 🔴"
 
 
+def strip_ansi(text):
+    """Remove ANSI color/format escape sequences for clean file export."""
+    return re.sub(r'\x1b\[[0-9;]*[mGKHF]', '', text)
+
+
+def shorten_proc(path):
+    """Return a short human-readable process name from a full binary path."""
+    name = os.path.basename(path)
+    # Strip common macOS helper suffixes for readability
+    name = re.sub(r'\s*\(.*\)$', '', name)
+    if len(name) > 35:
+        name = name[:32] + "…"
+    return name
+
+
 # ───────────────────────────── gather data ─────────────────────────────────────
 
 ioreg_raw = run(["ioreg", "-r", "-c", "AppleSmartBattery"])
@@ -206,8 +221,6 @@ bat_drain_mw = abs(bat_pw_mw) if bat_pw_mw < 0 else 0
 wall_mw = sys_v_mv * sys_i_ma // 1000 if sys_v_mv and sys_i_ma else sys_pw_mw
 
 # Battery pack power (correct): Amperage × Pack Voltage (both measured at pack terminals).
-# NOTE: ChargingVoltage in ChargerData is the per-CELL target voltage — do NOT use it
-#       to compute pack power. Use amp_abs_ma × bat_volt_mv instead.
 pack_pw_mw   = amp_abs_ma * bat_volt_mv // 1000
 
 # ── Adapter / USB-C PD ───────────────────────────────────────────────────────
@@ -243,8 +256,6 @@ pd_headroom  = max(0, pd_max_w - wall_w)
 
 # ── System / Hardware ────────────────────────────────────────────────────────
 hw_raw  = run(["system_profiler", "SPHardwareDataType"])
-model   = (re.search(r"Model Name:\s*(.+)",        hw_raw) or type('', (), {'group': lambda s, n: type('', (), {'strip': lambda s: 'N/A'})()})()).group(1)
-model   = model.strip() if hasattr(model, 'strip') else "N/A"
 
 def hw(pattern, fallback="N/A"):
     m = re.search(pattern, hw_raw)
@@ -259,11 +270,43 @@ mac_serial = hw(r"Serial Number.*?:\s*(\S+)")
 
 macos_ver  = run(["sw_vers", "-productVersion"])
 macos_bld  = run(["sw_vers", "-buildVersion"])
-macos_name = run(["sw_vers", "-productName"])
 hostname   = run(["hostname"])
 arch       = run(["uname", "-m"])
 pcpu       = run(["sysctl", "-n", "hw.physicalcpu"])
 lcpu       = run(["sysctl", "-n", "hw.logicalcpu"])
+
+# macOS version → friendly codename
+_macos_codenames = {
+    "15": "Sequoia", "14": "Sonoma", "13": "Ventura",
+    "12": "Monterey", "11": "Big Sur", "10.15": "Catalina",
+    "10.14": "Mojave", "10.13": "High Sierra", "10.12": "Sierra",
+}
+_major = macos_ver.split(".")[0]
+_minor_key = ".".join(macos_ver.split(".")[:2])
+macos_codename = _macos_codenames.get(_major) or _macos_codenames.get(_minor_key, "")
+
+# Python runtime version
+py_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+# ── GPU & Display ────────────────────────────────────────────────────────────
+gpu_raw       = run(["system_profiler", "SPDisplaysDataType"])
+gpu_model     = (re.search(r"Chipset Model:\s*(.+)", gpu_raw) or type('', (), {'group': lambda s, n: "N/A"})()).group(1).strip()
+gpu_cores_m   = re.search(r"Total Number of Cores:\s*(\d+)", gpu_raw)
+gpu_cores     = gpu_cores_m.group(1) if gpu_cores_m else "N/A"
+gpu_metal     = (re.search(r"Metal Support:\s*(.+)", gpu_raw) or type('', (), {'group': lambda s, n: "N/A"})()).group(1).strip()
+disp_type_m   = re.search(r"Display Type:\s*(.+)", gpu_raw)
+disp_type     = disp_type_m.group(1).strip() if disp_type_m else "N/A"
+disp_res_m    = re.search(r"Resolution:\s*(.+)", gpu_raw)
+disp_res      = disp_res_m.group(1).strip() if disp_res_m else "N/A"
+disp_conn_m   = re.search(r"Connection Type:\s*(.+)", gpu_raw)
+disp_conn     = disp_conn_m.group(1).strip() if disp_conn_m else "N/A"
+
+# ── Storage model (NVMe/SSD) ─────────────────────────────────────────────────
+nvme_raw      = run(["system_profiler", "SPNVMeDataType"])
+ssd_model_m   = re.search(r"Model:\s*(.+)", nvme_raw)
+ssd_model     = ssd_model_m.group(1).strip() if ssd_model_m else "N/A"
+ssd_cap_m     = re.search(r"Capacity:\s*([\d,.]+ [GT]B)", nvme_raw)
+ssd_capacity  = ssd_cap_m.group(1).strip() if ssd_cap_m else "N/A"
 
 # ── Uptime / load ────────────────────────────────────────────────────────────
 boot_raw   = run(["sysctl", "-n", "kern.boottime"])
@@ -302,22 +345,54 @@ mem_comp_gb = gb(pg_comp)
 mem_used_gb = mem_act_gb + mem_wired_gb + mem_comp_gb
 mem_used_pct= mem_used_gb / mem_total_gb * 100
 
+# Swap (compressed memory overflow to disk)
+swap_raw    = run(["sysctl", "vm.swapusage"])
+# e.g. "vm.swapusage: total = 4096.00M  used = 2536.25M  free = 1559.75M  (encrypted)"
+swap_total_m = re.search(r"total\s*=\s*([\d.]+)M", swap_raw)
+swap_used_m  = re.search(r"used\s*=\s*([\d.]+)M", swap_raw)
+swap_free_m  = re.search(r"free\s*=\s*([\d.]+)M", swap_raw)
+swap_enc     = "(encrypted)" in swap_raw
+swap_total_gb = float(swap_total_m.group(1)) / 1024 if swap_total_m else 0
+swap_used_gb  = float(swap_used_m.group(1))  / 1024 if swap_used_m  else 0
+swap_pct      = (swap_used_gb / swap_total_gb * 100) if swap_total_gb else 0
+
 # ── Disk ─────────────────────────────────────────────────────────────────────
-disk_raw = run(["df", "-g", "/"])
-disk_m   = re.search(r"(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%", disk_raw)
-if disk_m:
-    disk_total, disk_used, disk_free, disk_pct = [int(x) for x in disk_m.groups()]
-else:
-    disk_total = disk_used = disk_free = disk_pct = 0
+# macOS APFS splits into a read-only System volume and a writable Data volume.
+# We query both so that "used" reflects actual combined consumption.
+def _diskutil_gb(path, key):
+    raw = run(["diskutil", "info", path])
+    m = re.search(rf"{key}:\s*([\d.]+) GB", raw)
+    return float(m.group(1)) if m else 0.0
+
+disk_sys_gb   = _diskutil_gb("/", "Volume Used Space")           # macOS system files
+disk_data_gb  = _diskutil_gb("/System/Volumes/Data", "Volume Used Space")  # user data
+disk_total_gb = _diskutil_gb("/", "Container Total Space")
+disk_free_gb  = _diskutil_gb("/", "Container Free Space")
+
+if disk_total_gb == 0:
+    # Fallback: df -g
+    disk_raw = run(["df", "-g", "/"])
+    disk_m   = re.search(r"(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%", disk_raw)
+    if disk_m:
+        _dt, _du, _df, _dp = [int(x) for x in disk_m.groups()]
+        disk_total_gb = float(_dt); disk_free_gb = float(_df)
+        disk_sys_gb = float(_du); disk_data_gb = 0.0
+    else:
+        disk_total_gb = disk_free_gb = disk_sys_gb = disk_data_gb = 0.0
+
+disk_pct = int(((disk_total_gb - disk_free_gb) / disk_total_gb * 100) if disk_total_gb else 0)
 
 # ── Network ──────────────────────────────────────────────────────────────────
 # Try both en0 and en1 for WiFi SSID
-wifi_ssid = "Not connected"
+wifi_ssid = ""
+wifi_iface = ""
 for iface in ["en0", "en1", "en2"]:
     _w = run(["networksetup", "-getairportnetwork", iface])
     if "Current Wi-Fi Network:" in _w:
         wifi_ssid = _w.replace("Current Wi-Fi Network:", "").strip()
+        wifi_iface = iface
         break
+wifi_connected = bool(wifi_ssid)
 
 ipv4 = run(["ipconfig", "getifaddr", "en0"])
 if ipv4 == "N/A":
@@ -331,21 +406,23 @@ ipv6     = ipv6_m.group(1) if ipv6_m else "N/A"
 # Public IP (optional, requires network — safe no-op if offline)
 pub_ip = run(["curl", "-s", "--max-time", "3", "https://api.ipify.org"], "unavailable")
 
-# WiFi signal quality
-wifi_info = run(["system_profiler", "SPAirPortDataType"])
-rssi_m    = re.search(r"Signal / Noise.*?(-\d+)\s*/\s*(-\d+)", wifi_info)
-rssi_str  = f"{rssi_m.group(1)} dBm / {rssi_m.group(2)} dBm" if rssi_m else "N/A"
-channel_m = re.search(r"Channel:\s*(.+)", wifi_info)
-wifi_ch   = channel_m.group(1).strip() if channel_m else "N/A"
-tx_rate_m = re.search(r"Tx Rate:\s*([\d.]+)", wifi_info)
-tx_rate   = f"{tx_rate_m.group(1)} Mbps" if tx_rate_m else "N/A"
+# WiFi signal quality — only parse when actually connected
+wifi_info = run(["system_profiler", "SPAirPortDataType"]) if wifi_connected else ""
+rssi_str  = "N/A"
+wifi_ch   = "N/A"
+tx_rate   = "N/A"
+if wifi_connected and wifi_info:
+    rssi_m    = re.search(r"Signal / Noise.*?(-\d+)\s*/\s*(-\d+)", wifi_info)
+    rssi_str  = f"{rssi_m.group(1)} dBm / {rssi_m.group(2)} dBm" if rssi_m else "N/A"
+    channel_m = re.search(r"Channel:\s*(.+)", wifi_info)
+    wifi_ch   = channel_m.group(1).strip() if channel_m else "N/A"
+    tx_rate_m = re.search(r"Tx Rate:\s*([\d.]+)", wifi_info)
+    tx_rate   = f"{tx_rate_m.group(1)} Mbps" if tx_rate_m else "N/A"
 
 # ── pmset ────────────────────────────────────────────────────────────────────
 pmset_batt      = run(["pmset", "-g", "batt"])
 pmset_src_m     = re.search(r"Now drawing from '(.+)'", pmset_batt)
 pmset_source    = pmset_src_m.group(1) if pmset_src_m else "Unknown"
-pmset_pct_m     = re.search(r"(\d+)%;", pmset_batt)
-pmset_pct       = int(pmset_pct_m.group(1)) if pmset_pct_m else soc
 
 pmset_all       = run(["pmset", "-g"])
 sleep_m         = re.search(r"^\s*sleep\s+(\d+)", pmset_all, re.MULTILINE)
@@ -386,12 +463,38 @@ if HAS_PSUTIL:
     except Exception:
         pass
 
-# ── Disk I/O (iostat — always available) ─────────────────────────────────────
-iostat_raw  = run(["iostat", "disk0"])
-iostat_m    = re.search(r"([\d.]+)\s+([\d.]+)\s+([\d.]+)", iostat_raw.split("\n")[-1] if iostat_raw != "N/A" else "")
-disk_kbt    = float(iostat_m.group(1)) if iostat_m else 0.0   # KB/transfer
-disk_tps    = float(iostat_m.group(2)) if iostat_m else 0.0   # transfers/sec
-disk_mbs    = float(iostat_m.group(3)) if iostat_m else 0.0   # MB/sec
+# ── Top processes by CPU usage ────────────────────────────────────────────────
+proc_raw  = run(["ps", "-Ao", "pid,%cpu,%mem,comm", "-r"])
+proc_lines = proc_raw.splitlines()[1:] if proc_raw != "N/A" else []
+# Total running processes (subtract 1 for header line)
+total_procs = max(0, len(proc_raw.splitlines()) - 1) if proc_raw != "N/A" else 0
+
+top_procs = []
+for line in proc_lines[:6]:
+    parts = line.split(None, 3)
+    if len(parts) == 4:
+        try:
+            pid, cpu_p, mem_p, comm = parts
+            top_procs.append((float(cpu_p), float(mem_p), int(pid), shorten_proc(comm)))
+        except (ValueError, IndexError):
+            pass
+
+# ── Disk I/O — 2-sample iostat for real-time reading ─────────────────────────
+# First sample = cumulative average since boot; second sample = last 1-second interval.
+try:
+    _iostat_out = subprocess.check_output(
+        ["iostat", "-d", "disk0", "1", "2"], text=True, stderr=subprocess.DEVNULL
+    ).strip()
+    _iostat_lines = [l for l in _iostat_out.splitlines() if re.search(r"[\d.]+\s+[\d.]+\s+[\d.]+", l)]
+    # Use last data line (second sample = live interval)
+    _last = _iostat_lines[-1] if _iostat_lines else ""
+    iostat_m = re.search(r"([\d.]+)\s+([\d.]+)\s+([\d.]+)", _last)
+except Exception:
+    iostat_m = None
+
+disk_kbt  = float(iostat_m.group(1)) if iostat_m else 0.0
+disk_tps  = float(iostat_m.group(2)) if iostat_m else 0.0
+disk_mbs  = float(iostat_m.group(3)) if iostat_m else 0.0
 
 # Disk I/O lifetime counters (psutil — cumulative since boot)
 disk_read_gb = disk_write_gb = 0.0
@@ -406,7 +509,6 @@ if HAS_PSUTIL:
 
 # ── Network I/O (netstat — always available) ──────────────────────────────────
 net_raw   = run(["netstat", "-ib"])
-# Aggregate bytes across all active en* interfaces
 net_rx_bytes = net_tx_bytes = 0
 for line in net_raw.splitlines():
     parts = line.split()
@@ -418,7 +520,6 @@ for line in net_raw.splitlines():
         except (ValueError, IndexError):
             pass
 
-# netstat gives cumulative since boot — convert to GB
 net_rx_gb = net_rx_bytes / (1024**3)
 net_tx_gb = net_tx_bytes / (1024**3)
 
@@ -442,10 +543,7 @@ cycles_remain  = max(0, design_cycle - cycle_count)
 cycle_pct_used = (cycle_count / design_cycle * 100) if design_cycle else 0
 
 # True battery power at the pack terminals (most accurate):
-# BatteryPower (from telemetry) is the direct PMU measurement.
-# pack_pw_mw (Amperage × Pack Voltage) cross-validates it.
 display_bat_pw = bat_chg_mw if is_charging else bat_drain_mw
-# Choose the telemetry reading when available, fall back to amp×volt
 if display_bat_pw == 0:
     display_bat_pw = pack_pw_mw
 
@@ -480,16 +578,26 @@ lines.append(f"""
 ╚══════════════════════════════════════════════════════════════════╝""")
 
 # ── 1. MACHINE ────────────────────────────────────────────────────────────────
+_codename_str = f" {macos_codename}" if macos_codename else ""
 lines.append(section("🖥️   MACHINE"))
 lines.append(f"""  Model           : {model}  ({model_id}){"  [" + model_num + "]" if model_num else ""}
   Chip            : {chip}  [{arch}]
   CPU Cores       : {pcpu} physical · {lcpu} logical
   RAM             : {mem_str}
   Serial          : {mac_serial}
-  macOS           : {macos_name} {macos_ver}  (build {macos_bld})
-  Hostname        : {hostname}""")
+  macOS           : {macos_ver}{_codename_str}  (build {macos_bld})
+  Hostname        : {hostname}
+  Python          : {py_ver}""")
 
-# ── 2. CHARGER / ADAPTER ──────────────────────────────────────────────────────
+# ── 2. GPU & DISPLAY ──────────────────────────────────────────────────────────
+lines.append(section("🎮  GPU & DISPLAY"))
+lines.append(f"""  GPU             : {gpu_model}  ({gpu_cores}-core GPU)
+  Metal           : {gpu_metal}
+  Display Type    : {disp_type}
+  Resolution      : {disp_res}
+  Connection      : {disp_conn}""")
+
+# ── 3. CHARGER / ADAPTER ──────────────────────────────────────────────────────
 lines.append(section("🔌  CHARGER / ADAPTER"))
 if ext_conn:
     lines.append(f"""  Connected       : Yes ✅
@@ -507,7 +615,7 @@ else:
     lines.append(f"""  Connected       : No ❌  (running on internal battery)
   Last known      : {adp_name.strip() if adp_name != "N/A" else "—"}""")
 
-# ── 3. POWER FLOW ─────────────────────────────────────────────────────────────
+# ── 4. POWER FLOW ─────────────────────────────────────────────────────────────
 lines.append(section("⚡  POWER FLOW  (real-time, from PMU telemetry)"))
 if ext_conn:
     lines.append(f"""  Power Source    : {pmset_source}
@@ -525,7 +633,7 @@ else:
   ─────────────────────────────────────────────────────────────────
   Drain rate      : {amp_abs_ma/1000:.3f} A × {bat_volt_mv/1000:.3f} V = {pack_pw_mw/1000:.2f} W""")
 
-# ── 4. BATTERY — STATE ────────────────────────────────────────────────────────
+# ── 5. BATTERY — STATE ────────────────────────────────────────────────────────
 lines.append(section("🔋  BATTERY — STATE"))
 time_line = f"  Time to Full    : {fmt_time(time_to_full)}" if is_charging else f"  Time Remaining  : {fmt_time(time_to_empty)}"
 lines.append(f"""  Level           : {bar(soc)}
@@ -549,7 +657,7 @@ if slow_chg_rsn:
 if chg_therml_s:
     lines.append(f"  ⚠ Thermally limited: {chg_therml_s}s total")
 
-# ── 5. BATTERY — HEALTH ───────────────────────────────────────────────────────
+# ── 6. BATTERY — HEALTH ───────────────────────────────────────────────────────
 lines.append(section("🔋  BATTERY — HEALTH"))
 lines.append(f"""  Health          : {bar(health_pct)}  →  {health_label(health_pct)}
   Max Capacity    : {raw_max_cap:,} mAh  ←  design was {design_cap:,} mAh  (lost {design_cap - raw_max_cap:,} mAh)
@@ -562,7 +670,7 @@ lines.append(f"""  Health          : {bar(health_pct)}  →  {health_label(healt
   Peak V ever     : {max_volt_ever/1000:.3f} V  |  Low V ever : {min_volt_ever/1000:.3f} V
   Peak charge I   : {max_chg_ever/1000:.3f} A  (lifetime max)""")
 
-# ── 6. THERMAL ────────────────────────────────────────────────────────────────
+# ── 7. THERMAL ────────────────────────────────────────────────────────────────
 lines.append(section("🌡️   THERMAL"))
 lines.append(f"""  Battery Temp    : {bat_temp_c:.1f} °C  (right now)
   Lifetime Avg    : {avg_temp_raw/10:.1f} °C
@@ -570,13 +678,14 @@ lines.append(f"""  Battery Temp    : {bat_temp_c:.1f} °C  (right now)
   Lifetime Max    : {max_temp_raw/10:.1f} °C
   Thermally ltd   : {chg_therml_s} s  (total charging time throttled by heat)""")
 
-# ── 7. RUNTIME ────────────────────────────────────────────────────────────────
+# ── 8. RUNTIME ────────────────────────────────────────────────────────────────
 lines.append(section("🏃  RUNTIME"))
 lines.append(f"""  Uptime          : {uptime_fmt}
   Total Op. Hours : {total_op_h:,} h  (cumulative lifetime battery active hours)
-  Load Avg        : {load_str}  (1m · 5m · 15m)""")
+  Load Avg        : {load_str}  (1m · 5m · 15m)
+  Processes       : {total_procs} running""")
 
-# ── 8. CPU ────────────────────────────────────────────────────────────────────
+# ── 9. CPU ────────────────────────────────────────────────────────────────────
 lines.append(section("⚙️   CPU"))
 _psutil_note = "" if HAS_PSUTIL else "  (install psutil for per-core breakdown)"
 lines.append(f"""  Usage           : {bar(cpu_used, reverse=True)}{_psutil_note}
@@ -589,44 +698,60 @@ if cpu_per_core:
     core_bars = "  ".join(f"C{i}: {p:.0f}%" for i, p in enumerate(cpu_per_core))
     lines.append(f"  Per-Core        : {core_bars}")
 
-# ── 9. MEMORY ─────────────────────────────────────────────────────────────────
+# ── 10. TOP PROCESSES ─────────────────────────────────────────────────────────
+lines.append(section("📋  TOP PROCESSES  (by CPU usage)"))
+if top_procs:
+    lines.append(f"  {'PID':<7}  {'CPU%':>5}  {'MEM%':>5}  Process")
+    lines.append(f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*35}")
+    for _cpu_p, _mem_p, _pid, _name in top_procs[:5]:
+        lines.append(f"  {_pid:<7}  {_cpu_p:>5.1f}  {_mem_p:>5.1f}  {_name}")
+else:
+    lines.append("  (unable to read process list)")
+
+# ── 11. MEMORY ─────────────────────────────────────────────────────────────────
 lines.append(section("💾  MEMORY"))
+_swap_note = " (encrypted)" if swap_enc else ""
 lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  →  {mem_label(mem_used_pct)}
   Total           : {mem_total_gb:.1f} GB
   Active          : {mem_act_gb:.2f} GB  (in use by apps)
   Wired           : {mem_wired_gb:.2f} GB  (kernel, locked)
   Compressed      : {mem_comp_gb:.2f} GB  (swapped via compressor)
   Inactive        : {mem_inact_gb:.2f} GB  (reclaimable)
-  Free            : {mem_free_gb:.2f} GB""")
+  Free            : {mem_free_gb:.2f} GB
+  Swap            : {swap_used_gb:.2f} GB used / {swap_total_gb:.2f} GB total{_swap_note}""")
 
-# ── 10. DISK ──────────────────────────────────────────────────────────────────
+# ── 12. DISK ──────────────────────────────────────────────────────────────────
 lines.append(section("💿  DISK  ( / )"))
 _io_lifetime = ""
 if disk_read_gb or disk_write_gb:
     _io_lifetime = f"\n  Read (lifetime) : {disk_read_gb:.2f} GB  |  Write: {disk_write_gb:.2f} GB"
-lines.append(f"""  Usage           : {bar(disk_pct, reverse=True)}
-  Total           : {disk_total} GB
-  Used            : {disk_used} GB
-  Free            : {disk_free} GB
+lines.append(f"""  Storage         : {ssd_model}  ({ssd_capacity})
+  Usage           : {bar(disk_pct, reverse=True)}
+  Container Total : {disk_total_gb:.1f} GB  (physical SSD size)
+  System Volume   : {disk_sys_gb:.1f} GB  (macOS system files, read-only)
+  Data Volume     : {disk_data_gb:.1f} GB  (apps, user files, documents)
+  Container Free  : {disk_free_gb:.1f} GB  (available for new data)
   I/O (now)       : {disk_tps:.0f} tps · {disk_mbs:.2f} MB/s  (disk0){_io_lifetime}""")
 
-# ── 11. NETWORK ───────────────────────────────────────────────────────────────
+# ── 13. NETWORK ───────────────────────────────────────────────────────────────
 lines.append(section("🌐  NETWORK"))
+_wifi_status = wifi_ssid if wifi_connected else "Not connected"
 lines.append(f"""  IPv4  (en0)     : {ipv4}
   IPv6            : {ipv6}
   Public IP       : {pub_ip}
-  Wi-Fi SSID      : {wifi_ssid}
-  Wi-Fi Channel   : {wifi_ch}
+  Wi-Fi SSID      : {_wifi_status}""")
+if wifi_connected:
+    lines.append(f"""  Wi-Fi Channel   : {wifi_ch}
   Signal/Noise    : {rssi_str}
-  TX Rate         : {tx_rate}
-  RX (since boot) : {net_rx_gb:.2f} GB
+  TX Rate         : {tx_rate}""")
+lines.append(f"""  RX (since boot) : {net_rx_gb:.2f} GB
   TX (since boot) : {net_tx_gb:.2f} GB""")
 if net_per_iface:
     for _iface, (_rx, _tx) in sorted(net_per_iface.items()):
         if _rx + _tx > 0.01:
             lines.append(f"  {_iface:<15} : ↓ {_rx:.2f} GB  ↑ {_tx:.2f} GB")
 
-# ── 12. POWER MANAGEMENT ──────────────────────────────────────────────────────
+# ── 14. POWER MANAGEMENT ──────────────────────────────────────────────────────
 lines.append(section("⚙️   POWER MANAGEMENT"))
 lines.append(f"""  Power Source    : {pmset_source}
   Sleep Timer     : {"disabled" if not sleep_min else str(sleep_min) + " min"}
@@ -642,9 +767,12 @@ report = "\n".join(lines)
 
 # ── Export ───────────────────────────────────────────────────────────────────
 if _do_export:
-    os.makedirs(os.path.dirname(os.path.abspath(_export_path)), exist_ok=True)
+    _export_dir = os.path.dirname(os.path.abspath(_export_path))
+    if _export_dir:
+        os.makedirs(_export_dir, exist_ok=True)
+    clean_report = strip_ansi(report)
     with open(_export_path, "w", encoding="utf-8") as f:
-        f.write(report)
+        f.write(clean_report)
     print(report)
     print(f"\n{'━'*66}")
     print(f"  ✅  Report exported to:")
