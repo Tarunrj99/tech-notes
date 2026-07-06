@@ -343,10 +343,14 @@ def main():
 
     # Prime counters so first displayed delta is meaningful (not total-since-boot)
     _prime, prev_net, prev_disk = collect((0, 0), (0, 0))
-    n_lines = 0
 
-    # Hide cursor
-    sys.stdout.write("\033[?25l")
+    # Switch to alternate screen buffer (like htop/top) so the frame can be any
+    # height, the main terminal history is never touched, and Ctrl+C restores
+    # everything exactly as the user left it.
+    sys.stdout.write("\033[?1049h"   # enter alt screen
+                     "\033[?25l"     # hide cursor
+                     "\033[2J"       # clear alt screen
+                     "\033[H")       # move to top-left
     sys.stdout.flush()
 
     try:
@@ -354,29 +358,23 @@ def main():
             t_start = time.monotonic()
 
             d, prev_net, prev_disk = collect(prev_net, prev_disk)
-            elapsed = time.monotonic() - t_start
-            # Actual interval = time since last render start
-            interval = round(REFRESH_SECS + elapsed, 1) if n_lines == 0 else REFRESH_SECS
-
             lines = render(d, short, REFRESH_SECS)
 
-            if n_lines > 0:
-                sys.stdout.write(f"\033[{n_lines}A")  # move cursor up
-
+            sys.stdout.write("\033[H")          # jump to top-left each refresh
             for line in lines:
-                sys.stdout.write(f"\033[K{line}\n")   # clear line, print new
+                sys.stdout.write(f"\033[K{line}\n")   # clear-to-eol then print
             sys.stdout.flush()
-            n_lines = len(lines)
 
-            # Sleep for remaining time in the refresh cycle
             sleep_for = max(0.1, REFRESH_SECS - (time.monotonic() - t_start))
             time.sleep(sleep_for)
 
     except KeyboardInterrupt:
         pass
     finally:
-        sys.stdout.write("\033[?25h\n")  # restore cursor
-        print("  Live monitor stopped.")
+        sys.stdout.write("\033[?25h"     # restore cursor
+                         "\033[?1049l")  # leave alt screen → main screen restored
+        sys.stdout.flush()
+        print("\n  Live monitor stopped.")
 
 
 if __name__ == "__main__":
