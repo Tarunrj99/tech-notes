@@ -1,6 +1,6 @@
 # Mac Tools
 
-macOS-specific scripts and utilities. All tools are dependency-free and runnable with a single `curl | python3` command.
+macOS-specific scripts and utilities — runnable with a single `curl | bash` command that auto-installs any optional dependencies.
 
 [Back to tools/](../README.md) · [Back to repo root](../../README.md)
 
@@ -8,9 +8,9 @@ macOS-specific scripts and utilities. All tools are dependency-free and runnable
 
 ## Tools
 
-| Tool                                    | Description                                                             | Run Command |
-|-----------------------------------------|-------------------------------------------------------------------------|-------------|
-| [`battery-info/`](battery-info/)        | Full battery health, charging, power flow, thermals & system snapshot  | `curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/scripts/battery_info.py \| python3` |
+| Tool | Description | Single Command |
+|------|-------------|----------------|
+| [`battery-info/`](battery-info/) | Full battery health, charging, power flow, thermals & system snapshot | `curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh \| bash` |
 
 ---
 
@@ -18,4 +18,4 @@ macOS-specific scripts and utilities. All tools are dependency-free and runnable
 
 - macOS 12 Monterey or later
 - Python 3.8+ (pre-installed on macOS)
-- No `pip install` required
+- `psutil` pip package — **auto-installed** by `run.sh` if missing

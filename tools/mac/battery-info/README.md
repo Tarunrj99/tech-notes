@@ -13,12 +13,12 @@ curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac
 ```
 
 > This one command does everything:
-> 1. Shows an animated spinner during setup — all setup lines disappear before the report runs
+> 1. Shows an animated spinner that stays visible through setup AND report generation (~15 s) — disappears cleanly before the report is displayed
 > 2. Checks that Python 3.8+ is installed
 > 3. Auto-installs the `psutil` package if missing (handles PEP 668 / Homebrew Python)
 > 4. Downloads `battery_info.py` to a temp file
-> 5. Runs the full report on a clean terminal
-> 6. Cleans up the temp file
+> 5. Runs the full report; stdout is buffered so the spinner stays clean until Python finishes
+> 6. Cleans up all temp files on exit
 
 ---
 
@@ -92,24 +92,14 @@ All other data comes from macOS built-in tools:
 | Chip | Apple M1/M2/M3 or Intel chip, architecture (arm64/x86_64) |
 | CPU Cores | Physical + logical core count |
 | RAM | Total unified memory |
-| Serial | Mac serial number |
+| Disk | SSD model and capacity |
 | macOS | Version, codename (Sequoia / Sonoma / etc.), and build number |
+| Serial | Mac serial number |
 | Hostname | Computer name on the network |
 
 ---
 
-### 2. 🎮 GPU & Display
-| Field | What it shows |
-|---|---|
-| GPU | Integrated GPU name and core count (e.g. Apple M1, 7-core GPU) |
-| Metal | Metal GPU API version (Metal 3 on M1/M2/M3) |
-| Display Type | Panel technology (Built-In Retina LCD, etc.) |
-| Resolution | Native pixel resolution (e.g. 2560 × 1600 Retina) |
-| Connection | How the display connects (Internal, DisplayPort, etc.) |
-
----
-
-### 3. 🔌 Charger / Adapter
+### 2. 🔌 Charger / Adapter
 | Field | What it shows |
 |---|---|
 | Connected | Yes/No with status |
@@ -128,7 +118,7 @@ All other data comes from macOS built-in tools:
 
 ---
 
-### 4. ⚡ Power Flow (real-time, from PMU telemetry)
+### 3. ⚡ Power Flow (real-time, from PMU telemetry)
 Shows exactly where every watt from the wall goes.
 
 ```
@@ -145,7 +135,7 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 
 ---
 
-### 5. 🔋 Battery — State
+### 4. 🔋 Battery — State
 | Field | What it shows |
 |---|---|
 | Level | % charge with Unicode progress bar |
@@ -162,7 +152,7 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 
 ---
 
-### 6. 🩺 Battery — Health
+### 5. 🩺 Battery — Health
 | Field | What it shows |
 |---|---|
 | **Health %** | `(Max Capacity / Design Capacity) × 100` — the standard SoH metric |
@@ -188,7 +178,7 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 
 ---
 
-### 7. 🌡️ Thermal
+### 6. 🌡️ Thermal
 | Field | What it shows |
 |---|---|
 | Battery Temp (now) | Current battery temperature in °C |
@@ -198,7 +188,7 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 
 ---
 
-### 8. 🏃 Runtime
+### 7. 🏃 Runtime
 | Field | What it shows |
 |---|---|
 | Uptime | How long since last restart |
@@ -208,7 +198,7 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 
 ---
 
-### 9. ⚙️ CPU
+### 8. ⚙️ CPU
 | Field | What it shows |
 |---|---|
 | Usage | Overall CPU % with bar (user + system) |
@@ -220,19 +210,18 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 
 ---
 
-### 10. 📋 Top Processes (by CPU usage)
+### 9. 🎮 GPU & Display
 | Field | What it shows |
 |---|---|
-| PID | Process ID |
-| CPU% | Current CPU utilisation of that process |
-| MEM% | Percentage of total RAM consumed |
-| Process | Shortened binary name (full `/Applications/…` paths stripped) |
-
-> Shows the top 5 CPU consumers. Useful for identifying runaway processes driving battery drain.
+| GPU | Integrated GPU name and core count (e.g. Apple M1, 7-core GPU) |
+| Metal | Metal GPU API version (Metal 3 on M1/M2/M3) |
+| Display Type | Panel technology (Built-In Retina LCD, etc.) |
+| Resolution | Native pixel resolution (e.g. 2560 × 1600 Retina) |
+| Connection | How the display connects (Internal, DisplayPort, etc.) |
 
 ---
 
-### 11. 💾 Memory
+### 10. 💾 Memory
 | Field | What it shows |
 |---|---|
 | Usage | % with bar and pressure label |
@@ -245,6 +234,18 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 | **Swap** | Pages written to SSD as overflow (`sysctl vm.swapusage`); always AES-encrypted on Apple Silicon |
 
 **Pressure labels:** Normal (< 60%) · Moderate (60–80%) · High (> 80%)
+
+---
+
+### 11. 📋 Top Processes
+| Field | What it shows |
+|---|---|
+| PID | Process ID |
+| CPU% | Current CPU utilisation of that process |
+| MEM% | Percentage of total RAM consumed |
+| Process | Shortened binary name (full `/Applications/…` paths stripped) |
+
+Shows **two sub-tables**: "By CPU" (top 5 sorted by CPU%) and "By Memory" (top 5 sorted by MEM%). Placing this after Memory lets you see total CPU + RAM usage first, then identify which processes are responsible.
 
 ---
 
@@ -321,6 +322,6 @@ battery-info/
 
 ## 🔒 Privacy
 
-- No data is sent anywhere except one `curl` to `api.ipify.org` for the public IP lookup — remove lines 270–271 in `battery_info.py` to disable it
+- No data is sent anywhere except two `curl` calls — one to `api.ipify.org` (IPv4) and one to `api6.ipify.org` (IPv6) for the public IP fields — search for `api.ipify.org` in `battery_info.py` and remove those two lines to disable it
 - All battery and hardware data is read from local macOS system interfaces
 - `run.sh` downloads `battery_info.py` from this public GitHub repo only, to a temp file that is deleted after the run
