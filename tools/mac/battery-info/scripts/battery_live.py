@@ -51,7 +51,7 @@ def fmt_time(mins):
     h, m = divmod(int(mins), 60)
     return f"{h}h {m:02d}m" if h else f"{m}m"
 
-def bar(pct, width=24, reverse=False):
+def bar(pct, width=24, reverse=False, decimals=1):
     pct = max(0.0, min(100.0, float(pct)))
     filled = int(pct * width / 100)
     b = "█" * filled + "░" * (width - filled)
@@ -59,7 +59,8 @@ def bar(pct, width=24, reverse=False):
         dot = "🟢" if pct < 60 else ("🟡" if pct < 85 else "🔴")
     else:
         dot = "🟢" if pct > 40 else ("🟡" if pct > 20 else "🔴")
-    return f"[{b}] {pct:5.1f}%  {dot}"
+    pct_str = f"{pct:.{decimals}f}%"
+    return f"[{b}] {pct_str:>{4 + decimals}}  {dot}"
 
 SEP = "━" * WIDTH
 
@@ -81,6 +82,7 @@ def collect(prev_net, prev_disk):
     design_cap  = ri(raw, r'"DesignCapacity"\s*=\s*(\d+)')
     cycle_cnt   = ri(raw, r'"CycleCount"\s*=\s*(\d+)')
     health_pct  = round(raw_max_cap / design_cap * 100) if design_cap else 0
+    low_pwr     = run(["sysctl", "-n", "kern.lowpowermode"]).strip() == "1"
 
     # ── power telemetry ──
     ptd_m = re.search(r'"PowerTelemetryData"\s*=\s*\{([^}]+)\}', raw)
@@ -264,7 +266,7 @@ def collect(prev_net, prev_disk):
         "wall_w": wall_w, "sys_load": sys_load, "batt_pwr": batt_pwr,
         "v_in": v_in, "a_in": a_in, "adp_w": adp_w,
         "ttf": ttf, "tte": tte,
-        "health_pct": health_pct, "cycle_cnt": cycle_cnt,
+        "health_pct": health_pct, "cycle_cnt": cycle_cnt, "low_pwr": low_pwr,
         "thermal": thermal, "uptime_str": uptime_str, "wifi_ssid": wifi_ssid,
         "cpu_pct": pct, "cpu_user": cpu_user, "cpu_sys": cpu_sys,
         "freq": freq, "per_core": per_core,
@@ -371,12 +373,14 @@ def render(d, model, interval):
         SEP,
         "  🔋  BATTERY",
         SEP,
-        f"  Level          : {bar(d['soc'])}",
+        f"  Level          : {bar(d['soc'], decimals=0)}",
         f"  Status         : {status}",
         f"  {t_label}",
-        f"  Voltage        : {d['voltage']:.3f} V  ·  Temp : {d['temp']:.1f} °C",
-        f"  Current        : {abs(d['amp']):.3f} A  ({'+ charging' if d['amp'] > 0 else '- discharging'})",
-        f"  Health         : {bar(d['health_pct'], width=16)}  ·  Cycles : {d['cycle_cnt']}",
+        f"  Pack Power     : {abs(d['batt_pwr']):.2f} W  ({'→ charging into pack' if d['is_chg'] else '← draining from pack'})",
+        f"  Voltage        : {d['voltage']:.3f} V  ·  Current : {abs(d['amp']):.3f} A  ({'+ chg' if d['amp'] > 0 else '- dis'})",
+        f"  Temperature    : {d['temp']:.1f} °C  ·  Low Power : {'On 🟡' if d['low_pwr'] else 'Off'}",
+        f"  {'─' * (WIDTH - 4)}",
+        f"  Health         : {bar(d['health_pct'], width=16, decimals=0)}  ·  Cycles : {d['cycle_cnt']}",
         "",
         SEP,
         "  ⚡  POWER FLOW",
