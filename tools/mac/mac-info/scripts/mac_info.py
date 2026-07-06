@@ -713,12 +713,12 @@ if cell_volts:
     lines.append(f"  Cell Voltages   : {cell_str}")
 
 _ncr = decode_not_chg(not_chg_rsn)
-if _ncr:
+if ext_conn and _ncr:
     _ncr_icon = "ℹ️" if not_chg_rsn == 128 else "⚠"
     lines.append(f"  {_ncr_icon} Not charging: {_ncr}" +
                  ("  (normal — macOS manages charge timing)" if not_chg_rsn == 128 else ""))
 _scr = decode_not_chg(slow_chg_rsn)
-if _scr:
+if ext_conn and _scr:
     lines.append(f"  ⚠ Slow charging: {_scr}")
 
 # ── 5. BATTERY — HEALTH ───────────────────────────────────────────────────────
