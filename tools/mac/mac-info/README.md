@@ -1,6 +1,6 @@
-# 🔋 Mac Battery & System Info
+# 🍎 Mac System Info
 
-A single Python script that prints a real-time, richly detailed report of your Mac's battery health, charging state, power flow, GPU, CPU, memory, disk, network, top processes, and hardware — all in one terminal output.
+A single Python script that prints a richly detailed snapshot of your Mac — battery health, charging state, power flow, CPU, memory, disk, network, top processes, GPU, thermals, and hardware — all in one terminal output. Includes a live real-time dashboard mode.
 
 **macOS only** (Apple Silicon + Intel). Core features require no pip packages. The optional `psutil` package (auto-installed by `run.sh`) adds CPU per-core stats and I/O counters.
 
@@ -9,7 +9,7 @@ A single Python script that prints a real-time, richly detailed report of your M
 ## ⚡ Single Command — Fetch, Install & Run
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh)
 ```
 
 > This one command does everything:
@@ -25,7 +25,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/to
 ## 📺 Live Monitor (Real-Time Dashboard)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --live
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --live
 ```
 
 > Launches a **live, in-place updating dashboard** (like `htop`) that refreshes every 3 seconds.  
@@ -58,7 +58,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/to
 ### Local run
 
 ```bash
-python3 tools/mac/battery-info/scripts/battery_live.py
+python3 tools/mac/mac-info/scripts/mac_live.py
 ```
 
 ---
@@ -68,16 +68,16 @@ python3 tools/mac/battery-info/scripts/battery_live.py
 ### Save to Desktop (default path)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --export
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --export
 ```
 
-> Saves to: `~/Desktop/battery-report-YYYY-MM-DD-HH-MM.txt`
+> Saves to: `~/Desktop/mac-report-YYYY-MM-DD-HH-MM.txt`
 > The report is also printed to the terminal at the same time.
 
 ### Save to a custom path
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --export ~/Documents/my-report.txt
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --export ~/Documents/my-report.txt
 ```
 
 ### How export works
@@ -86,9 +86,9 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/to
 |---|---|
 | Report prints to terminal | Always, regardless of `--export` |
 | File is written | UTF-8 plain text, ANSI color codes stripped for clean reading |
-| Default save location | `~/Desktop/battery-report-<timestamp>.txt` |
+| Default save location | `~/Desktop/mac-report-<timestamp>.txt` |
 | Custom path | Pass any path after `--export` |
-| Timestamp format | `YYYY-MM-DD-HH-MM` e.g. `battery-report-2026-07-06-15-30.txt` |
+| Timestamp format | `YYYY-MM-DD-HH-MM` e.g. `mac-report-2026-07-06-15-30.txt` |
 
 ---
 
@@ -100,14 +100,14 @@ git clone https://github.com/Tarunrj99/tech-notes.git
 cd tech-notes
 
 # Run the bootstrap (installs psutil, runs report)
-bash tools/mac/battery-info/run.sh
+bash tools/mac/mac-info/run.sh
 
 # Or run the script directly (basic mode, no psutil install)
-python3 tools/mac/battery-info/scripts/battery_info.py
+python3 tools/mac/mac-info/scripts/mac_info.py
 
 # Run with export
-python3 tools/mac/battery-info/scripts/battery_info.py --export
-python3 tools/mac/battery-info/scripts/battery_info.py --export ~/Desktop/report.txt
+python3 tools/mac/mac-info/scripts/mac_info.py --export
+python3 tools/mac/mac-info/scripts/mac_info.py --export ~/Desktop/report.txt
 ```
 
 ---
@@ -338,12 +338,13 @@ Shows **two sub-tables**: "By CPU" (top 5 sorted by CPU%) and "By Memory" (top 5
 ## 📁 Directory Structure
 
 ```
-battery-info/
+mac-info/
 ├── README.md                  ← you are here (full docs)
 ├── run.sh                     ← bootstrap: check Python, install deps, fetch & run
 ├── requirements.txt           ← pip dependencies (psutil>=5.9.0)
 ├── scripts/
-│   └── battery_info.py        ← the report script (700+ lines, no required pip deps)
+│   ├── mac_info.py            ← static report (700+ lines, no required pip deps)
+│   └── mac_live.py            ← live real-time dashboard (refreshes every 3 s)
 └── docs/
     └── sample-output.md       ← real terminal output with per-field glossary
 ```
@@ -363,6 +364,6 @@ battery-info/
 
 ## 🔒 Privacy
 
-- No data is sent anywhere except two `curl` calls — one to `api.ipify.org` (IPv4) and one to `api6.ipify.org` (IPv6) for the public IP fields — search for `api.ipify.org` in `battery_info.py` and remove those two lines to disable it
+- No data is sent anywhere except two `curl` calls — one to `api.ipify.org` (IPv4) and one to `api6.ipify.org` (IPv6) for the public IP fields — search for `api.ipify.org` in `mac_info.py` and remove those two lines to disable it
 - All battery and hardware data is read from local macOS system interfaces
-- `run.sh` downloads `battery_info.py` from this public GitHub repo only, to a temp file that is deleted after the run
+- `run.sh` downloads `mac_info.py` (or `mac_live.py`) from this public GitHub repo only, to a temp file that is deleted after the run

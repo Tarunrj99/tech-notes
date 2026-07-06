@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-battery_live.py — Real-time Mac Battery & System Live Monitor
+mac_live.py — Real-time Mac System & Battery Live Monitor
 
 Refreshes key metrics every 3 seconds, rewriting in-place.
 Press Ctrl+C to exit.
 
 One-liner:
-  bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --live
+  bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --live
 
 Local run:
-  python3 tools/mac/battery-info/scripts/battery_live.py
+  python3 tools/mac/mac-info/scripts/mac_live.py
 """
 
 import subprocess, re, sys, os, time, threading

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-battery_info.py — Comprehensive Mac Power, Battery & System Report
+mac_info.py — Comprehensive Mac System & Battery Report
 
 Data sources:
   - ioreg (AppleSmartBattery)   : battery, adapter, power telemetry
@@ -19,12 +19,12 @@ macOS only (Apple Silicon + Intel). Core features work with no pip packages.
 psutil adds per-core CPU % and richer I/O stats — auto-installed by run.sh.
 
 Usage:
-  python3 battery_info.py                          # print to terminal
-  python3 battery_info.py --export                 # save to ~/Desktop/battery-report-<timestamp>.txt
-  python3 battery_info.py --export /path/file.txt  # save to custom path
+  python3 mac_info.py                          # print to terminal
+  python3 mac_info.py --export                 # save to ~/Desktop/mac-report-<timestamp>.txt
+  python3 mac_info.py --export /path/file.txt  # save to custom path
 
 One-liner (fetch + auto-install deps + run):
-  curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash
+  bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh)
 """
 
 import subprocess, re, sys, os
@@ -49,7 +49,7 @@ if _do_export:
         _export_path = _args[idx + 1]
     else:
         ts = datetime.now().strftime("%Y-%m-%d-%H-%M")
-        _export_path = os.path.expanduser(f"~/Desktop/battery-report-{ts}.txt")
+        _export_path = os.path.expanduser(f"~/Desktop/mac-report-{ts}.txt")
 
 
 # ───────────────────────────── helpers ─────────────────────────────────────────

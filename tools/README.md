@@ -12,7 +12,7 @@
 | --- | --- |
 | [`cursor/`](cursor/README.md) | Cursor IDE — rules setup guide + 6 drop-in `.mdc` rules |
 | [`github/`](github/README.md) | GitHub — Apps, Actions, org-wide automation patterns |
-| [`mac/`](mac/README.md) | macOS scripts — battery health, system info, power diagnostics |
+| [`mac/`](mac/README.md) | macOS scripts — system info, battery health, power diagnostics, live monitor |
 
 *(More tool folders will be added here as they are published — e.g. `vscode/`, `gh-cli/`, `terraform/`.)*
 

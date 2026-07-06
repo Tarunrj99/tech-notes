@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 # ╔══════════════════════════════════════════════════════════════════╗
-# ║  Mac Battery & System Info — Bootstrap Runner                   ║
+# ║  Mac System Info — Bootstrap Runner                             ║
 # ║  Checks Python 3, installs missing packages, runs the report.   ║
 # ╚══════════════════════════════════════════════════════════════════╝
 #
 # USAGE (fetch & run from GitHub in one command):
 #
 #   Normal report:
-#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh)
+#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh)
 #
 #   Live monitor (real-time dashboard, Ctrl+C to exit):
-#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --live
+#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --live
 #
-#   Export to Desktop (battery-report-<timestamp>.txt):
-#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --export
+#   Export to Desktop (mac-report-<timestamp>.txt):
+#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --export
 #
 #   Export to a custom path:
-#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --export ~/Documents/my-report.txt
+#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --export ~/Documents/my-report.txt
 #
 set -euo pipefail
 
-SCRIPT_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/scripts/battery_info.py"
-LIVE_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/scripts/battery_live.py"
+SCRIPT_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/scripts/mac_info.py"
+LIVE_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/scripts/mac_live.py"
 
 # Detect --live flag
 _LIVE_MODE=false
@@ -104,7 +104,7 @@ if $_LIVE_MODE; then
     # ── LIVE MODE ────────────────────────────────────────────────────────────
     _spin "Fetching live monitor"
 
-    TMP_LIVE=$(mktemp "${TMPDIR:-/tmp}/mac_battery_live_XXXXXXXX")
+    TMP_LIVE=$(mktemp "${TMPDIR:-/tmp}/mac_live_XXXXXXXX")
     trap 'rm -f "${TMP_LIVE}"' EXIT
 
     if ! curl -fsSL "${LIVE_URL}" -o "${TMP_LIVE}" 2>/dev/null; then
@@ -119,8 +119,8 @@ else
     # ── REPORT MODE (default) ────────────────────────────────────────────────
     _spin "Fetching report"
 
-    TMP_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/mac_battery_info_XXXXXXXX")
-    TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/battery_report_XXXXXXXX")
+    TMP_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/mac_info_XXXXXXXX")
+    TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/mac_report_XXXXXXXX")
     trap 'rm -f "${TMP_SCRIPT}" "${TMP_OUT}"' EXIT
 
     if ! curl -fsSL "${SCRIPT_URL}" -o "${TMP_SCRIPT}" 2>/dev/null; then

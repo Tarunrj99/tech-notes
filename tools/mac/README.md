@@ -10,7 +10,7 @@ macOS-specific scripts and utilities — runnable with a single `curl | bash` co
 
 | Tool | Description | Commands |
 |------|-------------|----------|
-| [`battery-info/`](battery-info/) | Full battery health, charging, power flow, thermals & system snapshot | **Report:** `bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh)` <br> **Live monitor:** `bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --live` <br> **Export:** append `--export` |
+| [`mac-info/`](mac-info/) | Battery health, charging, power flow, CPU, memory, disk, network, thermals & top processes | **Report:** `bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh)` <br> **Live monitor:** `bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --live` <br> **Export:** append `--export` |
 
 ---
 
