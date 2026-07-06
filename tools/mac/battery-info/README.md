@@ -78,7 +78,7 @@ python3 tools/mac/battery-info/scripts/battery_info.py --export ~/Desktop/report
 | `psutil` | Optional | Auto-installed by `run.sh` | CPU per-core %, CPU frequency, disk I/O counters, network I/O counters |
 
 All other data comes from macOS built-in tools:
-`ioreg` · `system_profiler` · `sysctl` · `pmset` · `vm_stat` · `top` · `ps` · `diskutil` · `netstat` · `iostat` · `networksetup` · `scutil` · `curl`
+`ioreg` · `system_profiler` · `sysctl` · `pmset` · `vm_stat` · `top` · `ps` · `diskutil` · `netstat` · `iostat` · `networksetup` · `ipconfig` · `scutil` · `curl`
 
 ---
 

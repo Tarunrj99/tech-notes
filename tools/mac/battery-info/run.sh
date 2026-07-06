@@ -86,9 +86,11 @@ install_pkg psutil
 echo "🔍  Fetching report script…"
 TMP_SCRIPT=$(mktemp /tmp/mac_battery_info_XXXXX.py)
 
+# Always delete the temp file when the script exits (success, error, or signal).
+trap 'rm -f "${TMP_SCRIPT}"' EXIT
+
 if ! curl -fsSL "${SCRIPT_URL}" -o "${TMP_SCRIPT}" 2>/dev/null; then
     echo "❌  Could not download the script. Check your internet connection."
-    rm -f "${TMP_SCRIPT}"
     exit 1
 fi
 
@@ -96,5 +98,3 @@ echo ""
 
 # Pass all arguments (e.g. --export, --export /path) straight to Python
 python3 "${TMP_SCRIPT}" "$@"
-
-rm -f "${TMP_SCRIPT}"

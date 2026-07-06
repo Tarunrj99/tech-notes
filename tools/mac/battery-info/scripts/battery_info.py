@@ -133,11 +133,49 @@ def strip_ansi(text):
 def shorten_proc(path):
     """Return a short human-readable process name from a full binary path."""
     name = os.path.basename(path)
-    # Strip common macOS helper suffixes for readability
     name = re.sub(r'\s*\(.*\)$', '', name)
     if len(name) > 35:
         name = name[:32] + "…"
     return name
+
+
+def re_str(text, pattern, fallback="N/A"):
+    """Safe regex string extract with a clean fallback (no hacky type() tricks)."""
+    m = re.search(pattern, text)
+    return m.group(1).strip() if m else fallback
+
+
+# Known ioreg NotChargingReason / ChargerInhibitReason bit flags
+_NOT_CHG_REASONS = {
+    128: "Optimized Battery Charging active",   # bit 7 — macOS intentionally holds charge ≤80%
+    64:  "Temporary inhibit",                    # bit 6
+    32:  "Charger voltage out of range",         # bit 5
+    16:  "Charger current too high",             # bit 4
+    8:   "Charger too hot",                      # bit 3
+    4:   "Battery not detected",                 # bit 2
+    2:   "Temperature out of range",             # bit 1
+    1:   "Charging inhibited",                   # bit 0
+}
+
+def decode_not_chg(code):
+    """Decode NotChargingReason bit-field to a human-readable string."""
+    if code == 0:
+        return None
+    flags = [desc for bit, desc in sorted(_NOT_CHG_REASONS.items(), reverse=True) if code & bit]
+    return ", ".join(flags) if flags else f"code {code}"
+
+
+def fmt_thermal_time(seconds):
+    """Format thermal throttle seconds: '0 s' → 'None', else format duration."""
+    if not seconds:
+        return "None  (never throttled)"
+    h, rem = divmod(seconds, 3600)
+    m, s   = divmod(rem, 60)
+    if h:
+        return f"{h}h {m:02d}m {s:02d}s total"
+    if m:
+        return f"{m}m {s:02d}s total"
+    return f"{s}s total"
 
 
 # ───────────────────────────── gather data ─────────────────────────────────────
@@ -289,17 +327,13 @@ macos_codename = _macos_codenames.get(_major) or _macos_codenames.get(_minor_key
 py_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
 # ── GPU & Display ────────────────────────────────────────────────────────────
-gpu_raw       = run(["system_profiler", "SPDisplaysDataType"])
-gpu_model     = (re.search(r"Chipset Model:\s*(.+)", gpu_raw) or type('', (), {'group': lambda s, n: "N/A"})()).group(1).strip()
-gpu_cores_m   = re.search(r"Total Number of Cores:\s*(\d+)", gpu_raw)
-gpu_cores     = gpu_cores_m.group(1) if gpu_cores_m else "N/A"
-gpu_metal     = (re.search(r"Metal Support:\s*(.+)", gpu_raw) or type('', (), {'group': lambda s, n: "N/A"})()).group(1).strip()
-disp_type_m   = re.search(r"Display Type:\s*(.+)", gpu_raw)
-disp_type     = disp_type_m.group(1).strip() if disp_type_m else "N/A"
-disp_res_m    = re.search(r"Resolution:\s*(.+)", gpu_raw)
-disp_res      = disp_res_m.group(1).strip() if disp_res_m else "N/A"
-disp_conn_m   = re.search(r"Connection Type:\s*(.+)", gpu_raw)
-disp_conn     = disp_conn_m.group(1).strip() if disp_conn_m else "N/A"
+gpu_raw   = run(["system_profiler", "SPDisplaysDataType"])
+gpu_model = re_str(gpu_raw, r"Chipset Model:\s*(.+)")
+gpu_cores = re_str(gpu_raw, r"Total Number of Cores:\s*(\d+)")
+gpu_metal = re_str(gpu_raw, r"Metal Support:\s*(.+)")
+disp_type = re_str(gpu_raw, r"Display Type:\s*(.+)")
+disp_res  = re_str(gpu_raw, r"Resolution:\s*(.+)")
+disp_conn = re_str(gpu_raw, r"Connection Type:\s*(.+)")
 
 # ── Storage model (NVMe/SSD) ─────────────────────────────────────────────────
 nvme_raw      = run(["system_profiler", "SPNVMeDataType"])
@@ -650,12 +684,14 @@ if cell_volts:
     pack_sum = sum(cell_volts)
     lines.append(f"  Cell Voltages   : {cell_str}  (pack sum: {pack_sum/1000:.3f} V)")
 
-if not_chg_rsn:
-    lines.append(f"  ⚠ Not charging reason code: {not_chg_rsn}")
-if slow_chg_rsn:
-    lines.append(f"  ⚠ Slow charging reason code: {slow_chg_rsn}")
-if chg_therml_s:
-    lines.append(f"  ⚠ Thermally limited: {chg_therml_s}s total")
+_ncr = decode_not_chg(not_chg_rsn)
+if _ncr:
+    _ncr_icon = "ℹ️" if not_chg_rsn == 128 else "⚠"
+    lines.append(f"  {_ncr_icon} Not charging: {_ncr}" +
+                 ("  (normal — macOS manages charge timing)" if not_chg_rsn == 128 else ""))
+_scr = decode_not_chg(slow_chg_rsn)
+if _scr:
+    lines.append(f"  ⚠ Slow charging: {_scr}")
 
 # ── 6. BATTERY — HEALTH ───────────────────────────────────────────────────────
 lines.append(section("🔋  BATTERY — HEALTH"))
@@ -676,7 +712,7 @@ lines.append(f"""  Battery Temp    : {bat_temp_c:.1f} °C  (right now)
   Lifetime Avg    : {avg_temp_raw/10:.1f} °C
   Lifetime Min    : {min_temp_raw/10:.1f} °C
   Lifetime Max    : {max_temp_raw/10:.1f} °C
-  Thermally ltd   : {chg_therml_s} s  (total charging time throttled by heat)""")
+  Thermally ltd   : {fmt_thermal_time(chg_therml_s)}""")
 
 # ── 8. RUNTIME ────────────────────────────────────────────────────────────────
 lines.append(section("🏃  RUNTIME"))
