@@ -1,0 +1,9 @@
+# Mac Battery & System Info — Python dependencies
+#
+# All packages are OPTIONAL enhancements.
+# The script runs in "basic mode" without them using macOS built-in tools.
+#
+# psutil: enables CPU per-core usage %, disk I/O counters, and network I/O counters.
+#         Without it: CPU stats come from `top`, I/O stats are omitted.
+#
+psutil>=5.9.0

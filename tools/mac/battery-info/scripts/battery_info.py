@@ -1,17 +1,41 @@
 #!/usr/bin/env python3
 """
 battery_info.py — Comprehensive Mac Power, Battery & System Report
-Fetches real-time data from ioreg, system_profiler, sysctl, pmset, vm_stat, networksetup.
-macOS only (Apple Silicon + Intel). No third-party dependencies.
+
+Data sources:
+  - ioreg (AppleSmartBattery)   : battery, adapter, power telemetry
+  - system_profiler             : hardware model, chip, RAM
+  - sysctl                      : CPU cores, memory, boot time, load
+  - pmset                       : power source, sleep settings, assertions
+  - vm_stat                     : memory pages breakdown
+  - top                         : real-time CPU usage %
+  - df                          : disk space
+  - networksetup / scutil       : WiFi SSID, IP addresses
+  - netstat                     : network I/O bytes per interface
+  - iostat                      : disk I/O (tps, throughput)
+  - psutil (optional, pip)      : CPU per-core %, enhanced I/O counters
+
+macOS only (Apple Silicon + Intel). Core features work with no pip packages.
+psutil adds per-core CPU % and richer I/O stats — auto-installed by run.sh.
 
 Usage:
-  python3 battery_info.py              # print to terminal
-  python3 battery_info.py --export     # save to ~/Desktop/battery-report-<timestamp>.txt
-  python3 battery_info.py --export /path/to/file.txt   # save to custom path
+  python3 battery_info.py                          # print to terminal
+  python3 battery_info.py --export                 # save to ~/Desktop/battery-report-<timestamp>.txt
+  python3 battery_info.py --export /path/file.txt  # save to custom path
+
+One-liner (fetch + auto-install deps + run):
+  curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash
 """
 
 import subprocess, re, sys, os
 from datetime import datetime, timedelta
+
+# ── Optional: psutil for enhanced CPU / I/O stats ──────────────────────────
+try:
+    import psutil as _psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
 
 
 # ───────────────────────────── CLI args ────────────────────────────────────────
@@ -338,6 +362,78 @@ low_power_mode  = int(lowpwrm_m.group(1)) if lowpwrm_m else 0
 pmset_assert    = run(["pmset", "-g", "assertions"])
 idle_prevented  = "PreventUserIdleSystemSleep" in pmset_assert and re.search(r"PreventUserIdleSystemSleep\s+1", pmset_assert)
 
+# ── CPU usage (from top — always available) ──────────────────────────────────
+top_raw    = run(["top", "-l", "1", "-n", "0"])
+cpu_usr_m  = re.search(r"CPU usage:\s*([\d.]+)%\s*user", top_raw)
+cpu_sys_m  = re.search(r"([\d.]+)%\s*sys", top_raw)
+cpu_idle_m = re.search(r"([\d.]+)%\s*idle", top_raw)
+cpu_usr    = float(cpu_usr_m.group(1))  if cpu_usr_m  else 0.0
+cpu_sys    = float(cpu_sys_m.group(1))  if cpu_sys_m  else 0.0
+cpu_idle   = float(cpu_idle_m.group(1)) if cpu_idle_m else 0.0
+cpu_used   = cpu_usr + cpu_sys
+
+# CPU per-core (psutil) or N/A
+cpu_per_core = []
+cpu_freq_mhz = 0
+if HAS_PSUTIL:
+    try:
+        cpu_per_core = _psutil.cpu_percent(interval=0.2, percpu=True)
+    except Exception:
+        pass
+    try:
+        _freq = _psutil.cpu_freq()
+        cpu_freq_mhz = int(_freq.current) if _freq else 0
+    except Exception:
+        pass
+
+# ── Disk I/O (iostat — always available) ─────────────────────────────────────
+iostat_raw  = run(["iostat", "disk0"])
+iostat_m    = re.search(r"([\d.]+)\s+([\d.]+)\s+([\d.]+)", iostat_raw.split("\n")[-1] if iostat_raw != "N/A" else "")
+disk_kbt    = float(iostat_m.group(1)) if iostat_m else 0.0   # KB/transfer
+disk_tps    = float(iostat_m.group(2)) if iostat_m else 0.0   # transfers/sec
+disk_mbs    = float(iostat_m.group(3)) if iostat_m else 0.0   # MB/sec
+
+# Disk I/O lifetime counters (psutil — cumulative since boot)
+disk_read_gb = disk_write_gb = 0.0
+if HAS_PSUTIL:
+    try:
+        _dio = _psutil.disk_io_counters()
+        if _dio:
+            disk_read_gb  = _dio.read_bytes  / (1024**3)
+            disk_write_gb = _dio.write_bytes / (1024**3)
+    except Exception:
+        pass
+
+# ── Network I/O (netstat — always available) ──────────────────────────────────
+net_raw   = run(["netstat", "-ib"])
+# Aggregate bytes across all active en* interfaces
+net_rx_bytes = net_tx_bytes = 0
+for line in net_raw.splitlines():
+    parts = line.split()
+    # netstat -ib columns: Name MTU Network Address Ipkts Ierrs Ibytes Opkts Oerrs Obytes Coll
+    if len(parts) >= 10 and re.match(r"^en\d", parts[0]) and parts[3] not in ("<Link#", "N/A"):
+        try:
+            net_rx_bytes += int(parts[6])
+            net_tx_bytes += int(parts[9])
+        except (ValueError, IndexError):
+            pass
+
+# netstat gives cumulative since boot — convert to GB
+net_rx_gb = net_rx_bytes / (1024**3)
+net_tx_gb = net_tx_bytes / (1024**3)
+
+# Per-interface I/O (psutil)
+net_per_iface = {}
+if HAS_PSUTIL:
+    try:
+        _nics = _psutil.net_io_counters(pernic=True)
+        for iface, counters in _nics.items():
+            if re.match(r"^en\d", iface) and (counters.bytes_recv + counters.bytes_sent) > 0:
+                net_per_iface[iface] = (counters.bytes_recv / (1024**3),
+                                        counters.bytes_sent / (1024**3))
+    except Exception:
+        pass
+
 
 # ───────────────────────────── derived values ──────────────────────────────────
 
@@ -480,7 +576,20 @@ lines.append(f"""  Uptime          : {uptime_fmt}
   Total Op. Hours : {total_op_h:,} h  (cumulative lifetime battery active hours)
   Load Avg        : {load_str}  (1m · 5m · 15m)""")
 
-# ── 8. MEMORY ─────────────────────────────────────────────────────────────────
+# ── 8. CPU ────────────────────────────────────────────────────────────────────
+lines.append(section("⚙️   CPU"))
+_psutil_note = "" if HAS_PSUTIL else "  (install psutil for per-core breakdown)"
+lines.append(f"""  Usage           : {bar(cpu_used, reverse=True)}{_psutil_note}
+  User            : {cpu_usr:.1f}%
+  System          : {cpu_sys:.1f}%
+  Idle            : {cpu_idle:.1f}%""")
+if cpu_freq_mhz:
+    lines.append(f"  Frequency       : {cpu_freq_mhz:,} MHz")
+if cpu_per_core:
+    core_bars = "  ".join(f"C{i}: {p:.0f}%" for i, p in enumerate(cpu_per_core))
+    lines.append(f"  Per-Core        : {core_bars}")
+
+# ── 9. MEMORY ─────────────────────────────────────────────────────────────────
 lines.append(section("💾  MEMORY"))
 lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  →  {mem_label(mem_used_pct)}
   Total           : {mem_total_gb:.1f} GB
@@ -490,14 +599,18 @@ lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  →  {me
   Inactive        : {mem_inact_gb:.2f} GB  (reclaimable)
   Free            : {mem_free_gb:.2f} GB""")
 
-# ── 9. DISK ───────────────────────────────────────────────────────────────────
+# ── 10. DISK ──────────────────────────────────────────────────────────────────
 lines.append(section("💿  DISK  ( / )"))
+_io_lifetime = ""
+if disk_read_gb or disk_write_gb:
+    _io_lifetime = f"\n  Read (lifetime) : {disk_read_gb:.2f} GB  |  Write: {disk_write_gb:.2f} GB"
 lines.append(f"""  Usage           : {bar(disk_pct, reverse=True)}
   Total           : {disk_total} GB
   Used            : {disk_used} GB
-  Free            : {disk_free} GB""")
+  Free            : {disk_free} GB
+  I/O (now)       : {disk_tps:.0f} tps · {disk_mbs:.2f} MB/s  (disk0){_io_lifetime}""")
 
-# ── 10. NETWORK ───────────────────────────────────────────────────────────────
+# ── 11. NETWORK ───────────────────────────────────────────────────────────────
 lines.append(section("🌐  NETWORK"))
 lines.append(f"""  IPv4  (en0)     : {ipv4}
   IPv6            : {ipv6}
@@ -505,9 +618,15 @@ lines.append(f"""  IPv4  (en0)     : {ipv4}
   Wi-Fi SSID      : {wifi_ssid}
   Wi-Fi Channel   : {wifi_ch}
   Signal/Noise    : {rssi_str}
-  TX Rate         : {tx_rate}""")
+  TX Rate         : {tx_rate}
+  RX (since boot) : {net_rx_gb:.2f} GB
+  TX (since boot) : {net_tx_gb:.2f} GB""")
+if net_per_iface:
+    for _iface, (_rx, _tx) in sorted(net_per_iface.items()):
+        if _rx + _tx > 0.01:
+            lines.append(f"  {_iface:<15} : ↓ {_rx:.2f} GB  ↑ {_tx:.2f} GB")
 
-# ── 11. POWER MANAGEMENT ──────────────────────────────────────────────────────
+# ── 12. POWER MANAGEMENT ──────────────────────────────────────────────────────
 lines.append(section("⚙️   POWER MANAGEMENT"))
 lines.append(f"""  Power Source    : {pmset_source}
   Sleep Timer     : {"disabled" if not sleep_min else str(sleep_min) + " min"}
@@ -523,11 +642,16 @@ report = "\n".join(lines)
 
 # ── Export ───────────────────────────────────────────────────────────────────
 if _do_export:
-    # Strip box-drawing / emoji chars for clean plain-text file
-    clean = report
+    os.makedirs(os.path.dirname(os.path.abspath(_export_path)), exist_ok=True)
     with open(_export_path, "w", encoding="utf-8") as f:
-        f.write(clean)
+        f.write(report)
     print(report)
-    print(f"\n✅  Report saved to: {_export_path}\n")
+    print(f"\n{'━'*66}")
+    print(f"  ✅  Report exported to:")
+    print(f"      {_export_path}")
+    print(f"{'━'*66}\n")
 else:
     print(report)
+    if not HAS_PSUTIL:
+        print("  💡  Tip: run via run.sh for auto-install of psutil (adds per-core CPU stats)")
+        print(f"  {'─'*62}\n")
