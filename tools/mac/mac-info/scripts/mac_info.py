@@ -747,7 +747,8 @@ lines.append(section("🏃  RUNTIME"))
 lines.append(f"""  Uptime          : {uptime_fmt}
   Total Op. Hours : {total_op_h:,} h  (cumulative lifetime battery active hours)
   Load Avg        : {load_str}  (1m · 5m · 15m)
-  Processes       : {total_procs} running""")
+  Processes       : {total_procs} running
+  Python          : {py_ver}""")
 
 # ── 9. CPU ────────────────────────────────────────────────────────────────────
 lines.append(section("⚙️   CPU"))

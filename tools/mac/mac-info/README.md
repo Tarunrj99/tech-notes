@@ -236,6 +236,7 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 | Total Op. Hours | Cumulative lifetime hours the battery has been active |
 | Load Avg | 1-minute, 5-minute, 15-minute CPU load averages |
 | **Processes** | Total number of running processes right now |
+| Python | Python runtime version used to generate the report |
 
 ---
 

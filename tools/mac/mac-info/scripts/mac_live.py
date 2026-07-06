@@ -322,7 +322,7 @@ def render(d, model, interval):
 
     # Thermal dot
     therm_lower = d["thermal"].lower()
-    if "normal" in therm_lower or "ok" in therm_lower:
+    if "normal" in therm_lower or "nominal" in therm_lower or "ok" in therm_lower:
         therm_dot = "🟢"
     elif "moderate" in therm_lower or "limited" in therm_lower:
         therm_dot = "🟡"
