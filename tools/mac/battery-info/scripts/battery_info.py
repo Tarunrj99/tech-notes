@@ -33,6 +33,24 @@ def ioreg_int(s, pattern, default=0):
     return int(m.group(1)) if m else default
 
 
+def signed64(val):
+    """Convert a raw ioreg uint64 to a Python signed int (two's complement)."""
+    if val >= (1 << 63):
+        val -= (1 << 64)
+    return val
+
+
+def safe_mw(val):
+    """Return milliwatts clamped to [0, 500_000]; negative → 0 (discharging side)."""
+    v = signed64(val)
+    return max(0, v) if v >= 0 else 0
+
+
+def safe_ma(val):
+    """Return signed milliamps; large uint64 means negative (discharging current)."""
+    return signed64(val)
+
+
 def ioreg_str(s, pattern, default="N/A"):
     m = re.search(pattern, s)
     return m.group(1) if m else default
@@ -131,9 +149,12 @@ bat_voltage_mv = ioreg_int(ioreg_raw, r'"AppleRawBatteryVoltage"\s*=\s*(\d+)')
 if bat_voltage_mv == 0:
     bat_voltage_mv = ioreg_int(ioreg_raw, r'"Voltage"\s*=\s*(\d+)')
 
-amperage_ma  = ioreg_int(ioreg_raw, r'"InstantAmperage"\s*=\s*(\d+)')
-if amperage_ma == 0:
-    amperage_ma = ioreg_int(ioreg_raw, r'"Amperage"\s*=\s*(\d+)')
+# Amperage is a signed value: positive = charging, negative = discharging.
+# ioreg may return it as an unsigned 64-bit number (two's complement).
+_amp_raw     = ioreg_int(ioreg_raw, r'"InstantAmperage"\s*=\s*(\d+)')
+if _amp_raw == 0:
+    _amp_raw = ioreg_int(ioreg_raw, r'"Amperage"\s*=\s*(\d+)')
+amperage_ma  = safe_ma(_amp_raw)
 
 bat_temp_raw = ioreg_int(ioreg_raw, r'"Temperature"\s*=\s*(\d+)')
 bat_temp_c   = bat_temp_raw / 100.0
@@ -155,8 +176,13 @@ max_charge_ever  = ioreg_int(ioreg_raw, r'"MaximumChargeCurrent"\s*=\s*(\d+)')
 sys_v_mv     = ioreg_int(ioreg_raw, r'"SystemVoltageIn"\s*=\s*(\d+)')
 sys_i_ma     = ioreg_int(ioreg_raw, r'"SystemCurrentIn"\s*=\s*(\d+)')
 sys_pw_mw    = ioreg_int(ioreg_raw, r'"SystemPowerIn"\s*=\s*(\d+)')
-sys_load_mw  = ioreg_int(ioreg_raw, r'"SystemLoad"\s*=\s*(\d+)')
-bat_pw_mw    = ioreg_int(ioreg_raw, r'"BatteryPower"\s*=\s*(\d+)')
+sys_load_mw  = safe_mw(ioreg_int(ioreg_raw, r'"SystemLoad"\s*=\s*(\d+)'))
+# BatteryPower is signed: positive when charging INTO battery, negative when draining.
+# On battery (discharging), ioreg reports it as a large uint64 (two's complement).
+_bp_raw      = ioreg_int(ioreg_raw, r'"BatteryPower"\s*=\s*(\d+)')
+bat_pw_mw    = signed64(_bp_raw)        # negative means discharging
+bat_drain_mw = abs(bat_pw_mw) if bat_pw_mw < 0 else 0   # discharge rate
+bat_chg_mw   = bat_pw_mw if bat_pw_mw > 0 else 0         # charge rate
 eff_loss_mw  = ioreg_int(ioreg_raw, r'"AdapterEfficiencyLoss"\s*=\s*(\d+)')
 
 if sys_pw_mw == 0 and sys_v_mv > 0 and sys_i_ma > 0:
@@ -254,18 +280,19 @@ sleep_m           = re.search(r"sleep\s+(\d+)", run_list(["pmset", "-g"]))
 sleep_min         = int(sleep_m.group(1)) if sleep_m else 0
 
 # ── Derived calculations ──────────────────────────────────────────
-health_pct    = (raw_max_cap / design_cap * 100) if design_cap else 0
-bat_power_w   = amperage_ma * bat_voltage_mv / 1_000_000
-cycles_remain = max(0, design_cycle - cycle_count)
+health_pct     = (raw_max_cap / design_cap * 100) if design_cap else 0
+bat_power_w    = abs(amperage_ma) * bat_voltage_mv / 1_000_000
+cycles_remain  = max(0, design_cycle - cycle_count)
 cycle_pct_used = (cycle_count / design_cycle * 100) if design_cycle else 0
 
 sys_pw_w    = sys_pw_mw / 1000
 sys_load_w  = sys_load_mw / 1000
-bat_pw_w    = bat_pw_mw / 1000
+bat_chg_w   = bat_chg_mw / 1000
+bat_drain_w = bat_drain_mw / 1000
 eff_loss_w  = eff_loss_mw / 1000
 adp_in_w    = sys_v_mv * sys_i_ma / 1_000_000
 
-char_status = charge_status_label(is_charging, fully_chgd, bat_pw_mw, soc)
+char_status = charge_status_label(is_charging, fully_chgd, abs(bat_pw_mw), soc)
 
 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -290,26 +317,26 @@ print(f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🔌  CHARGER / ADAPTER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Name            : {adp_name.strip()}
-  Manufacturer    : {adp_mfg}
-  Model ID        : {adp_model}
-  Serial          : {adp_serial}
-  Firmware        : {adp_fw}  (HW: {adp_hw})
-  Rated Power     : {adp_watts} W
-  Max Voltage     : {adp_volt_mv/1000:.2f} V
-  Max Current     : {adp_cur_ma/1000:.2f} A
-  Protocol        : USB-C PD (auto-negotiated)
-  Connected       : {"Yes ✅" if ext_conn else "No ❌"}
+  Connected       : {"Yes ✅" if ext_conn else "No ❌  (running on battery)"}
+  Name            : {adp_name.strip() if ext_conn else "—"}
+  Manufacturer    : {adp_mfg if ext_conn else "—"}
+  Model ID        : {adp_model if ext_conn else "—"}
+  Serial          : {adp_serial if ext_conn else "—"}
+  Firmware        : {(adp_fw + "  (HW: " + adp_hw + ")") if ext_conn else "—"}
+  Rated Power     : {str(adp_watts) + " W" if ext_conn else "—"}
+  Max Voltage     : {f"{adp_volt_mv/1000:.2f} V" if ext_conn else "—"}
+  Max Current     : {f"{adp_cur_ma/1000:.2f} A" if ext_conn else "—"}
+  Protocol        : {"USB-C PD (auto-negotiated)" if ext_conn else "—"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ⚡  POWER FLOW  (real-time)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Power Source    : {pmset_source}
-  Wall Input      : {adp_in_w:.2f} W  ({sys_v_mv/1000:.2f} V × {sys_i_ma/1000:.3f} A)
-  System Receives : {sys_pw_w:.2f} W
+  Wall Input      : {f"{adp_in_w:.2f} W  ({sys_v_mv/1000:.2f} V × {sys_i_ma/1000:.3f} A)" if ext_conn else "0.00 W  (not connected)"}
+  System Receives : {f"{sys_pw_w:.2f} W" if ext_conn else "—"}
   System Load     : {sys_load_w:.2f} W
-  Battery Power   : {bat_pw_w:.2f} W  ({"charging" if is_charging else "discharging"})
-  Adapter Loss    : {eff_loss_w:.2f} W  (efficiency overhead)
+  {"Battery Output  : " + f"{bat_drain_w:.2f} W  (draining)" if not ext_conn else "Battery Input   : " + f"{bat_chg_w:.2f} W  (charging)"}
+  Adapter Loss    : {f"{eff_loss_w:.2f} W" if ext_conn else "—"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   🔋  BATTERY — STATE
@@ -317,9 +344,9 @@ print(f"""
   Level           : {soc}%  ({pmset_pct}% via pmset)
   Status          : {char_status}
   {"Time to Full   : " + fmt_time(time_to_full) if is_charging else "Time Remaining : " + fmt_time(time_to_empty)}
-  Charging Speed  : {charging_current_ma/1000:.2f} A @ {charging_voltage_mv/1000:.2f} V  →  {charging_current_ma*charging_voltage_mv/1_000_000:.2f} W
+  {"Charging Speed : " + f"{charging_current_ma/1000:.2f} A @ {charging_voltage_mv/1000:.2f} V  →  {charging_current_ma*charging_voltage_mv/1_000_000:.2f} W" if is_charging else "Drain Rate      : " + f"{abs(amperage_ma)/1000:.3f} A  ({bat_power_w:.2f} W)"}
   Battery Voltage : {bat_voltage_mv/1000:.3f} V
-  Instantaneous I : {amperage_ma/1000:.3f} A  ({bat_power_w:.2f} W)
+  Instantaneous I : {abs(amperage_ma)/1000:.3f} A  ({bat_power_w:.2f} W)
   Today Min/Max   : {daily_min_soc}% – {daily_max_soc}%
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
