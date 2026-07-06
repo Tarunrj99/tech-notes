@@ -100,19 +100,21 @@ def collect(prev_net, prev_disk):
 
     # ── CPU ──
     if HAS_PSUTIL:
-        ct   = _psutil.cpu_times_percent(interval=1)   # single blocking call gives user+sys together
+        ct       = _psutil.cpu_times_percent(interval=1)
         cpu_user = ct.user
         cpu_sys  = ct.system
-        pct  = cpu_user + cpu_sys
-        freq = getattr(_psutil.cpu_freq(), 'current', 0)
+        pct      = cpu_user + cpu_sys
+        freq     = getattr(_psutil.cpu_freq(), 'current', 0)
+        per_core = _psutil.cpu_percent(percpu=True)
     else:
-        top_out = run(["top", "-l", "2", "-n", "0"])
-        lines   = [l for l in top_out.splitlines() if "CPU usage" in l]
-        last    = lines[-1] if lines else ""
+        top_out  = run(["top", "-l", "2", "-n", "0"])
+        top_lines = [l for l in top_out.splitlines() if "CPU usage" in l]
+        last     = top_lines[-1] if top_lines else ""
         cpu_user = rf(last, r'([\d.]+)%\s*user')
         cpu_sys  = rf(last, r'([\d.]+)%\s*sys')
-        pct  = cpu_user + cpu_sys
-        freq = 0
+        pct      = cpu_user + cpu_sys
+        freq     = 0
+        per_core = []
 
     # ── load averages ──
     load_raw = run(["sysctl", "-n", "vm.loadavg"])
@@ -150,6 +152,22 @@ def collect(prev_net, prev_disk):
         swap_used   = float(sw_m.group(1)) / 1024 if sw_m else 0
         swap_total  = float(sw_m.group(2)) / 1024 if sw_m else 0
 
+    # ── top processes ──
+    top_procs = []
+    ps_out = run(["ps", "aux"])
+    for line in ps_out.splitlines()[1:]:
+        parts = line.split(None, 10)
+        if len(parts) >= 11:
+            try:
+                cpu_p = float(parts[2])
+                mem_p = float(parts[3])
+                pid   = parts[1]
+                name  = os.path.basename(parts[10].split()[0])[:34]
+                top_procs.append((cpu_p, mem_p, pid, name))
+            except (ValueError, IndexError):
+                pass
+    top_by_cpu = sorted(top_procs, key=lambda x: x[0], reverse=True)[:5]
+
     # ── network I/O delta ──
     now_net_rx, now_net_tx = 0, 0
     if HAS_PSUTIL:
@@ -182,7 +200,8 @@ def collect(prev_net, prev_disk):
         "v_in": v_in, "a_in": a_in, "adp_w": adp_w,
         "ttf": ttf, "tte": tte,
         "cpu_pct": pct, "cpu_user": cpu_user, "cpu_sys": cpu_sys,
-        "freq": freq,
+        "freq": freq, "per_core": per_core,
+        "top_by_cpu": top_by_cpu,
         "l1": l1, "l5": l5, "l15": l15,
         "mem_pct": mem_pct, "mem_total": mem_total,
         "active_gb": active_gb, "wired_gb": wired_gb,
@@ -280,6 +299,9 @@ def render(d, model, interval):
         f"  Usage          : {bar(d['cpu_pct'])}{freq_str}",
         f"  User / System  : {d['cpu_user']:.1f}%  /  {d['cpu_sys']:.1f}%",
         f"  Load Avg       : {d['l1']:.2f}  {d['l5']:.2f}  {d['l15']:.2f}  (1m · 5m · 15m)",
+        *([f"  Per-Core       : " + "  ".join(
+            f"C{i}:{v:.0f}%" for i, v in enumerate(d["per_core"])
+        )] if d["per_core"] else []),
         "",
         SEP,
         "  💾  MEMORY",
@@ -287,6 +309,14 @@ def render(d, model, interval):
         f"  Usage          : {bar(d['mem_pct'])}",
         f"  Active / Wired : {d['active_gb']:.2f} GB  /  {d['wired_gb']:.2f} GB",
         f"  Compressed     : {d['comp_gb']:.2f} GB  ·  Swap : {d['swap_used']:.2f} / {d['swap_total']:.2f} GB",
+        "",
+        SEP,
+        "  📋  TOP PROCESSES  (by CPU)",
+        SEP,
+        f"  {'PID':<7}  {'CPU%':>5}  {'MEM%':>5}  Process",
+        f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*34}",
+        *[f"  {pid:<7}  {cpu:>5.1f}  {mem:>5.1f}  {name}"
+          for cpu, mem, pid, name in d["top_by_cpu"]],
         "",
         SEP,
         "  🌐  NETWORK  (since last refresh)        💿  DISK  (since last refresh)",
