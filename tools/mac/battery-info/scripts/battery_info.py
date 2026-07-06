@@ -480,9 +480,9 @@ sleep_min       = int(sleep_m.group(1)) if sleep_m else 0
 disksleep_m     = re.search(r"disksleep\s+(\d+)", pmset_all)
 disksleep_min   = int(disksleep_m.group(1)) if disksleep_m else 0
 halfdim_m       = re.search(r"halfdim\s+(\d+)", pmset_all)
-halfdim         = int(halfdim_m.group(1)) if halfdim_m else 0
+halfdim         = int(halfdim_m.group(1)) if halfdim_m else None  # None = not reported by pmset
 lidwake_m       = re.search(r"lidwake\s+(\d+)", pmset_all)
-lidwake         = int(lidwake_m.group(1)) if lidwake_m else 0
+lidwake         = int(lidwake_m.group(1)) if lidwake_m else None  # None = not reported by pmset
 lowpwrm_m       = re.search(r"lowpowermode\s+(\d+)", pmset_all)
 low_power_mode  = int(lowpwrm_m.group(1)) if lowpwrm_m else 0
 
@@ -825,8 +825,8 @@ lines.append(section("💤  POWER MANAGEMENT"))
 lines.append(f"""  Power Source    : {pmset_source}
   Sleep Timer     : {"disabled" if not sleep_min else str(sleep_min) + " min"}
   Disk Sleep      : {"disabled" if not disksleep_min else str(disksleep_min) + " min"}
-  Half-dim        : {"enabled" if halfdim else "disabled"}
-  Lid Wake        : {"enabled" if lidwake else "disabled"}
+  Half-dim        : {("enabled" if halfdim else "disabled") if halfdim is not None else "N/A"}
+  Lid Wake        : {("enabled" if lidwake else "disabled") if lidwake is not None else "N/A"}
   Sleep prevented : {"Yes (assertion active)" if idle_prevented else "No"}
   Low Power Mode  : {"On 🔋" if low_power_mode else "Off"}""")
 
