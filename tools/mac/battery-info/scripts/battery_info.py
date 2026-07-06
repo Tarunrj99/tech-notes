@@ -686,7 +686,12 @@ else:
 
 # ── 5. BATTERY — STATE ────────────────────────────────────────────────────────
 lines.append(section("🔋  BATTERY — STATE"))
-time_line = f"  Time to Full    : {fmt_time(time_to_full)}" if is_charging else f"  Time Remaining  : {fmt_time(time_to_empty)}"
+if is_charging:
+    _ttf = fmt_time(time_to_full)
+    _ttf_str = "Topping off" if soc >= 100 and _ttf == "calculating…" else _ttf
+    time_line = f"  Time to Full    : {_ttf_str}"
+else:
+    time_line = f"  Time Remaining  : {fmt_time(time_to_empty)}"
 lines.append(f"""  Level           : {bar(soc)}
   Status          : {status_str}
 {time_line}
