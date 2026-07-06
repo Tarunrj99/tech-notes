@@ -22,6 +22,47 @@ curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac
 
 ---
 
+## 📺 Live Monitor (Real-Time Dashboard)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash -s -- --live
+```
+
+> Launches a **live, in-place updating dashboard** (like `htop`) that refreshes every 3 seconds.  
+> Press **Ctrl+C** to exit and return to your normal terminal — no history is touched.
+
+### What the live monitor shows
+
+| Section | Fields |
+|---|---|
+| **Header** | Model · chip · timestamp · system uptime |
+| **Battery** | Level bar, status, time to full/remaining, voltage, temp, current, health %, cycle count |
+| **Power Flow** | Source, wall input (V × A), battery in/out, system load |
+| **CPU** | Usage bar, user/sys%, load avg bar with trend arrow (↑↓→), thermal pressure, per-core % |
+| **Memory** | Usage bar, active/wired, compressed, swap |
+| **Top Processes** | Top 3 by CPU and top 3 by Memory (PID, CPU%, MEM%, name) |
+| **Network** | WiFi SSID, download/upload speed since last refresh |
+| **Disk** | Read/write speed since last refresh |
+
+### Colour key
+
+| Colour | Meaning |
+|---|---|
+| 🟢 | Normal / good |
+| 🟡 | Moderate / worth watching |
+| 🔴 | High / critical |
+
+> For CPU, memory, load avg, and thermal: **low = green, high = red** (correct direction).  
+> For battery level: **high = green, low = red**.
+
+### Local run
+
+```bash
+python3 tools/mac/battery-info/scripts/battery_live.py
+```
+
+---
+
 ## 📤 Export the Report to a File
 
 ### Save to Desktop (default path)

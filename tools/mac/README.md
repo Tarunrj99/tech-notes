@@ -8,9 +8,9 @@ macOS-specific scripts and utilities — runnable with a single `curl | bash` co
 
 ## Tools
 
-| Tool | Description | Single Command |
-|------|-------------|----------------|
-| [`battery-info/`](battery-info/) | Full battery health, charging, power flow, thermals & system snapshot | `curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh \| bash` |
+| Tool | Description | Commands |
+|------|-------------|----------|
+| [`battery-info/`](battery-info/) | Full battery health, charging, power flow, thermals & system snapshot | **Report:** `curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh \| bash` <br> **Live monitor:** `curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh \| bash -s -- --live` <br> **Export:** append `-- --export` |
 
 ---
 

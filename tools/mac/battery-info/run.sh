@@ -9,6 +9,9 @@
 #   Normal report:
 #     curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash
 #
+#   Live monitor (real-time dashboard, Ctrl+C to exit):
+#     curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash -s -- --live
+#
 #   Export to Desktop (battery-report-<timestamp>.txt):
 #     curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash -s -- --export
 #
@@ -18,6 +21,15 @@
 set -euo pipefail
 
 SCRIPT_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/scripts/battery_info.py"
+LIVE_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/scripts/battery_live.py"
+
+# Detect --live flag
+_LIVE_MODE=false
+_REMAINING_ARGS=()
+for _a in "$@"; do
+    if [[ "$_a" == "--live" ]]; then _LIVE_MODE=true
+    else _REMAINING_ARGS+=("$_a"); fi
+done
 
 # ── Spinner helpers ────────────────────────────────────────────────────────
 # One animated spinner line that updates its message across all setup steps.
@@ -86,28 +98,43 @@ if ! python3 -c "import psutil" 2>/dev/null; then
     true   # continue in basic mode if all attempts fail
 fi
 
-# ── 4. Download report script ──────────────────────────────────────────────
-_spin "Fetching report"
+# ── 4. Download script ─────────────────────────────────────────────────────
 
-TMP_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/mac_battery_info_XXXXXXXX")
-TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/battery_report_XXXXXXXX")
-trap 'rm -f "${TMP_SCRIPT}" "${TMP_OUT}"' EXIT
+if $_LIVE_MODE; then
+    # ── LIVE MODE ────────────────────────────────────────────────────────────
+    _spin "Fetching live monitor"
 
-if ! curl -fsSL "${SCRIPT_URL}" -o "${TMP_SCRIPT}" 2>/dev/null; then
+    TMP_LIVE=$(mktemp "${TMPDIR:-/tmp}/mac_battery_live_XXXXXXXX")
+    trap 'rm -f "${TMP_LIVE}"' EXIT
+
+    if ! curl -fsSL "${LIVE_URL}" -o "${TMP_LIVE}" 2>/dev/null; then
+        _spin
+        printf "  Download failed — check your internet connection.\n" >&2; exit 1
+    fi
+
+    _spin   # clear spinner line before entering alt screen
+    python3 "${TMP_LIVE}"
+
+else
+    # ── REPORT MODE (default) ────────────────────────────────────────────────
+    _spin "Fetching report"
+
+    TMP_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/mac_battery_info_XXXXXXXX")
+    TMP_OUT=$(mktemp "${TMPDIR:-/tmp}/battery_report_XXXXXXXX")
+    trap 'rm -f "${TMP_SCRIPT}" "${TMP_OUT}"' EXIT
+
+    if ! curl -fsSL "${SCRIPT_URL}" -o "${TMP_SCRIPT}" 2>/dev/null; then
+        _spin
+        printf "  Download failed — check your internet connection.\n" >&2; exit 1
+    fi
+
+    # ── 5. Generate and display the report ───────────────────────────────────
+    _spin "Generating report"
+
+    python3 "${TMP_SCRIPT}" "${_REMAINING_ARGS[@]+"${_REMAINING_ARGS[@]}"}" > "${TMP_OUT}"
+
+    sleep 0.3
     _spin
-    printf "  Download failed — check your internet connection.\n" >&2; exit 1
+
+    cat "${TMP_OUT}"
 fi
-
-# ── 5. Generate and display the report ─────────────────────────────────────
-# Keep spinner running while Python collects system data and builds the report
-# (~15 s).  Stdout is captured to TMP_OUT so the spinner line stays clean;
-# errors still stream to stderr.  After Python exits we clear the line and
-# print the report.
-_spin "Generating report"
-
-python3 "${TMP_SCRIPT}" "$@" > "${TMP_OUT}"
-
-sleep 0.3
-_spin
-
-cat "${TMP_OUT}"

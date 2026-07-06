@@ -12,7 +12,7 @@ Local run:
   python3 tools/mac/battery-info/scripts/battery_live.py
 """
 
-import subprocess, re, sys, os, time
+import subprocess, re, sys, os, time, threading
 from datetime import datetime
 
 # ── Optional psutil (faster CPU / IO readings) ──────────────────────────────
@@ -355,10 +355,12 @@ def render(d, model, interval):
     elif d["l1"] < d["l5"] - 0.05: load_trend = "↓"
     else:                           load_trend = "→"
 
+    credit = "Created by Tarun Saini"
     lines = [
         "",
         f"╔{'═' * (WIDTH - 2)}╗",
         title_line,
+        f"║  {credit:<{WIDTH - 6}}  ║",
         f"║  {header_sub:<{WIDTH - 6}}  ║",
         f"╚{'═' * (WIDTH - 2)}╝",
         "",
@@ -432,8 +434,30 @@ def render(d, model, interval):
 
 # ─────────────────────────── main ───────────────────────────────────────────
 
+def _spinner(label, stop_event):
+    """Animated spinner on the current screen line; clears itself when done."""
+    frames = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+    i = 0
+    sys.stdout.write("\033[?25l")   # hide cursor
+    sys.stdout.flush()
+    while not stop_event.is_set():
+        sys.stdout.write(f"\r  {frames[i % len(frames)]}  {label}   ")
+        sys.stdout.flush()
+        time.sleep(0.08)
+        i += 1
+    sys.stdout.write("\r" + " " * (len(label) + 10) + "\r")
+    sys.stdout.write("\033[?25h")   # restore cursor
+    sys.stdout.flush()
+
+
 def main():
-    # Static info — collected once
+    # ── startup spinner while collecting static info + priming counters ──────
+    stop_spin = threading.Event()
+    spin_thread = threading.Thread(
+        target=_spinner, args=("Starting live monitor…", stop_spin), daemon=True
+    )
+    spin_thread.start()
+
     hw = run(["system_profiler", "SPHardwareDataType"])
     chip_m  = re.search(r"Chip:\s+(.+)",       hw)
     model_m = re.search(r"Model Name:\s+(.+)", hw)
@@ -443,6 +467,11 @@ def main():
 
     # Prime counters so first displayed delta is meaningful (not total-since-boot)
     _prime, prev_net, prev_disk = collect((0, 0), (0, 0))
+    # First real data pass (so the live view isn't blank on entry)
+    d_first, prev_net, prev_disk = collect(prev_net, prev_disk)
+
+    stop_spin.set()
+    spin_thread.join()
 
     # Switch to alternate screen buffer (like htop/top) so the frame can be any
     # height, the main terminal history is never touched, and Ctrl+C restores
@@ -454,10 +483,9 @@ def main():
     sys.stdout.flush()
 
     try:
+        d = d_first
         while True:
             t_start = time.monotonic()
-
-            d, prev_net, prev_disk = collect(prev_net, prev_disk)
             lines = render(d, short, REFRESH_SECS)
 
             sys.stdout.write("\033[H")          # jump to top-left each refresh
@@ -467,6 +495,8 @@ def main():
 
             sleep_for = max(0.1, REFRESH_SECS - (time.monotonic() - t_start))
             time.sleep(sleep_for)
+
+            d, prev_net, prev_disk = collect(prev_net, prev_disk)
 
     except KeyboardInterrupt:
         pass
