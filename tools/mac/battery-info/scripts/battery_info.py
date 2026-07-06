@@ -529,15 +529,18 @@ proc_lines = proc_raw.splitlines()[1:] if proc_raw != "N/A" else []
 # Total running processes (subtract 1 for header line)
 total_procs = max(0, len(proc_raw.splitlines()) - 1) if proc_raw != "N/A" else 0
 
-top_procs = []
-for line in proc_lines[:6]:
+_all_procs = []
+for line in proc_lines:
     parts = line.split(None, 3)
     if len(parts) == 4:
         try:
             pid, cpu_p, mem_p, comm = parts
-            top_procs.append((float(cpu_p), float(mem_p), int(pid), shorten_proc(comm)))
+            _all_procs.append((float(cpu_p), float(mem_p), int(pid), shorten_proc(comm)))
         except (ValueError, IndexError):
             pass
+
+top_procs = _all_procs[:5]                                              # ps -r already sorted by CPU
+mem_procs = sorted(_all_procs, key=lambda x: x[1], reverse=True)[:5]   # sort by MEM%
 
 # ── Disk I/O — 2-sample iostat for real-time reading ─────────────────────────
 # First sample = cumulative average since boot; second sample = last 1-second interval.
@@ -632,7 +635,7 @@ lines = []
 lines.append(f"""
 ╔══════════════════════════════════════════════════════════════════╗
 ║      🍎  Mac System & Battery Report  ·  {now_str}     ║
-║{"Tarun Saini".center(66)}║
+║{"Created by Tarun Saini".center(66)}║
 ╚══════════════════════════════════════════════════════════════════╝""")
 
 # ── 1. MACHINE ────────────────────────────────────────────────────────────────
@@ -642,6 +645,7 @@ lines.append(f"""  Model           : {model}  ({model_id}){"  [" + model_num + "
   Chip            : {chip}  [{arch}]
   CPU Cores       : {pcpu} physical · {lcpu} logical
   RAM             : {mem_str}
+  Disk            : {ssd_model}  ({ssd_capacity})
   Serial          : {mac_serial}
   macOS           : {macos_ver}{_codename_str}  (build {macos_bld})
   Hostname        : {hostname}""")
@@ -755,11 +759,19 @@ if cpu_per_core:
     lines.append(f"  Per-Core        : {core_bars}")
 
 # ── 10. TOP PROCESSES ─────────────────────────────────────────────────────────
-lines.append(section("📋  TOP PROCESSES  (by CPU usage)"))
+lines.append(section("📋  TOP PROCESSES"))
+_phdr = f"  {'PID':<7}  {'CPU%':>5}  {'MEM%':>5}  Process"
+_pdiv = f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*35}"
 if top_procs:
-    lines.append(f"  {'PID':<7}  {'CPU%':>5}  {'MEM%':>5}  Process")
-    lines.append(f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*35}")
-    for _cpu_p, _mem_p, _pid, _name in top_procs[:5]:
+    lines.append("  ── By CPU " + "─" * 55)
+    lines.append(_phdr)
+    lines.append(_pdiv)
+    for _cpu_p, _mem_p, _pid, _name in top_procs:
+        lines.append(f"  {_pid:<7}  {_cpu_p:>5.1f}  {_mem_p:>5.1f}  {_name}")
+    lines.append("  ── By Memory " + "─" * 52)
+    lines.append(_phdr)
+    lines.append(_pdiv)
+    for _cpu_p, _mem_p, _pid, _name in mem_procs:
         lines.append(f"  {_pid:<7}  {_cpu_p:>5.1f}  {_mem_p:>5.1f}  {_name}")
 else:
     lines.append("  (unable to read process list)")
