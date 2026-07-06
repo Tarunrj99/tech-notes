@@ -1,4 +1,4 @@
-# Mac Battery & System Info — Python dependencies
+# Mac System Info — Python dependencies
 #
 # All packages are OPTIONAL enhancements.
 # The script runs in "basic mode" without them using macOS built-in tools.

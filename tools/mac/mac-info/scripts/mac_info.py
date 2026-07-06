@@ -670,7 +670,7 @@ else:
     lines.append(f"""  Connected       : No ❌  (running on internal battery)
   Last known      : {adp_name.strip() if adp_name != "N/A" else "—"}""")
 
-# ── 4. POWER FLOW ─────────────────────────────────────────────────────────────
+# ── 3. POWER FLOW ─────────────────────────────────────────────────────────────
 lines.append(section("⚡  POWER FLOW  (real-time, from PMU telemetry)"))
 if ext_conn:
     lines.append(f"""  Power Source    : {pmset_source}
@@ -686,7 +686,7 @@ else:
   System Load     : {sys_load_w:.2f} W  ← CPU + GPU + peripherals
   Battery Out     : {display_bat_w:.2f} W  ← draining from pack""")
 
-# ── 5. BATTERY — STATE ────────────────────────────────────────────────────────
+# ── 4. BATTERY — STATE ────────────────────────────────────────────────────────
 lines.append(section("🔋  BATTERY — STATE"))
 if is_charging:
     _ttf = fmt_time(time_to_full)
@@ -721,7 +721,7 @@ _scr = decode_not_chg(slow_chg_rsn)
 if _scr:
     lines.append(f"  ⚠ Slow charging: {_scr}")
 
-# ── 6. BATTERY — HEALTH ───────────────────────────────────────────────────────
+# ── 5. BATTERY — HEALTH ───────────────────────────────────────────────────────
 lines.append(section("🩺  BATTERY — HEALTH"))
 lines.append(f"""  Health          : {bar(health_pct)}  ({health_label(health_pct)})
   Max Capacity    : {raw_max_cap:,} mAh  ←  design was {design_cap:,} mAh  (lost {design_cap - raw_max_cap:,} mAh)
@@ -734,7 +734,7 @@ lines.append(f"""  Health          : {bar(health_pct)}  ({health_label(health_pc
   Peak V ever     : {max_volt_ever/1000:.3f} V  |  Low V ever : {min_volt_ever/1000:.3f} V
   Peak charge I   : {max_chg_ever/1000:.3f} A  (lifetime max)""")
 
-# ── 7. THERMAL ────────────────────────────────────────────────────────────────
+# ── 6. THERMAL ────────────────────────────────────────────────────────────────
 lines.append(section("🌡️   THERMAL"))
 lines.append(f"""  Battery Temp    : {bat_temp_c:.1f} °C  (right now)
   Lifetime Avg    : {avg_temp_raw/10:.1f} °C
@@ -742,7 +742,7 @@ lines.append(f"""  Battery Temp    : {bat_temp_c:.1f} °C  (right now)
   Lifetime Max    : {max_temp_raw/10:.1f} °C
   Thermally ltd   : {fmt_thermal_time(chg_therml_s)}""")
 
-# ── 8. RUNTIME ────────────────────────────────────────────────────────────────
+# ── 7. RUNTIME ────────────────────────────────────────────────────────────────
 lines.append(section("🏃  RUNTIME"))
 lines.append(f"""  Uptime          : {uptime_fmt}
   Total Op. Hours : {total_op_h:,} h  (cumulative lifetime battery active hours)
@@ -750,7 +750,7 @@ lines.append(f"""  Uptime          : {uptime_fmt}
   Processes       : {total_procs} running
   Python          : {py_ver}""")
 
-# ── 9. CPU ────────────────────────────────────────────────────────────────────
+# ── 8. CPU ────────────────────────────────────────────────────────────────────
 lines.append(section("⚙️   CPU"))
 _psutil_note = "" if HAS_PSUTIL else "  (install psutil for per-core breakdown)"
 lines.append(f"""  Usage           : {bar(cpu_used, reverse=True)}{_psutil_note}
@@ -763,7 +763,7 @@ if cpu_per_core:
     core_bars = "  ".join(f"C{i}: {p:.0f}%" for i, p in enumerate(cpu_per_core))
     lines.append(f"  Per-Core        : {core_bars}")
 
-# ── 10. GPU & DISPLAY ─────────────────────────────────────────────────────────
+# ── 9. GPU & DISPLAY ──────────────────────────────────────────────────────────
 lines.append(section("🎮  GPU & DISPLAY"))
 lines.append(f"""  GPU             : {gpu_model}  ({gpu_cores}-core GPU)
   Metal           : {gpu_metal}
@@ -771,7 +771,7 @@ lines.append(f"""  GPU             : {gpu_model}  ({gpu_cores}-core GPU)
   Resolution      : {disp_res}
   Connection      : {disp_conn}""")
 
-# ── 11. MEMORY ────────────────────────────────────────────────────────────────
+# ── 10. MEMORY ────────────────────────────────────────────────────────────────
 lines.append(section("💾  MEMORY"))
 _swap_note = " (encrypted)" if swap_enc else ""
 lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  ({mem_label(mem_used_pct)})
@@ -783,7 +783,7 @@ lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  ({mem_la
   Free            : {mem_free_gb:.2f} GB
   Swap            : {swap_used_gb:.2f} GB used / {swap_total_gb:.2f} GB total{_swap_note}""")
 
-# ── 12. TOP PROCESSES ─────────────────────────────────────────────────────────
+# ── 11. TOP PROCESSES ─────────────────────────────────────────────────────────
 lines.append(section("📋  TOP PROCESSES"))
 _phdr = f"  {'PID':<7}  {'CPU%':>5}  {'MEM%':>5}  Process"
 _pdiv = f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*35}"
@@ -801,7 +801,7 @@ if top_procs:
 else:
     lines.append("  (unable to read process list)")
 
-# ── 13. DISK ──────────────────────────────────────────────────────────────────
+# ── 12. DISK ──────────────────────────────────────────────────────────────────
 lines.append(section("💿  DISK  ( / )"))
 _io_lifetime = ""
 if disk_read_gb or disk_write_gb:

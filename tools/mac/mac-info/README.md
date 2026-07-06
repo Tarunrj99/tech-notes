@@ -344,7 +344,7 @@ mac-info/
 ├── run.sh                     ← bootstrap: check Python, install deps, fetch & run
 ├── requirements.txt           ← pip dependencies (psutil>=5.9.0)
 ├── scripts/
-│   ├── mac_info.py            ← static report (700+ lines, no required pip deps)
+│   ├── mac_info.py            ← static report (850+ lines, no required pip deps)
 │   └── mac_live.py            ← live real-time dashboard (refreshes every 3 s)
 └── docs/
     └── sample-output.md       ← real terminal output with per-field glossary
