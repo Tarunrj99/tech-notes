@@ -671,6 +671,10 @@ else:
   Last known      : {adp_name.strip() if adp_name != "N/A" else "—"}""")
 
 # ── 3. POWER FLOW ─────────────────────────────────────────────────────────────
+# bat_pw_mw is signed: + = charging into battery, - = battery boosting (discharging while on AC)
+_bat_signed_w = bat_pw_mw / 1000
+_bat_dir  = "Battery In " if bat_pw_mw >= 0 else "Battery Out"
+_bat_note = "going into battery pack" if bat_pw_mw >= 0 else "battery supplementing wall"
 lines.append(section("⚡  POWER FLOW  (real-time, from PMU telemetry)"))
 if ext_conn:
     lines.append(f"""  Power Source    : {pmset_source}
@@ -678,9 +682,9 @@ if ext_conn:
   │  Adapter Loss  : {eff_loss_w:.2f} W  ← conversion overhead
   │  System Gets   : {sys_pw_w:.2f} W  ← delivered to Mac
   ├─ System Load   : {sys_load_w:.2f} W  ← CPU + GPU + peripherals
-  └─ Battery In    : {display_bat_w:.2f} W  ← going into battery pack
+  └─ {_bat_dir}   : {display_bat_w:.2f} W  ← {_bat_note}
   ─────────────────────────────────────────────────────────────────
-  Balance check   : {sys_load_w:.2f} + {display_bat_w:.2f} = {sys_load_w + display_bat_w:.2f} W  (should ≈ {wall_w:.2f} W)""")
+  Balance check   : {sys_load_w:.2f} + {_bat_signed_w:.2f} = {sys_load_w + _bat_signed_w:.2f} W  (should ≈ {wall_w:.2f} W)""")
 else:
     lines.append(f"""  Power Source    : {pmset_source}
   System Load     : {sys_load_w:.2f} W  ← CPU + GPU + peripherals

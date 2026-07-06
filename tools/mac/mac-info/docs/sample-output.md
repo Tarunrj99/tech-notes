@@ -35,7 +35,7 @@
   Adapter Rating  : 68 W  (rated max)
   Negotiated PD   : 20 V × 3.4 A = 68 W  (USB-C PD profile 3)
   Wall Draw Now   : 28.76 W  (20.37 V × 1.412 A)
-  Adapter Usage   : [████████░░░░░░░░░░░░] 42%  ⬜
+  Adapter Usage   : [████████░░░░░░░░░░░░] 42%  🟢
   Headroom Left   : 39.2 W  (unused capacity)
 
   [When charger is disconnected:]
@@ -117,6 +117,7 @@
   Total Op. Hours : 26,449 h  (cumulative lifetime battery active hours)
   Load Avg        : 3.38  4.73  7.36  (1m · 5m · 15m)
   Processes       : 511 running
+  Python          : 3.14.5
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   ⚙️   CPU
@@ -250,7 +251,7 @@
 | Field | Meaning |
 |-------|---------|
 | Level | State of Charge (%) |
-| Time to Full | Minutes until full; **"Topping off"** when Level=100% but trickle charge is still active; **"calculating…"** when rate is unknown |
+| Time to Full | Minutes until full; **"Topping off"** when Level=100% but trickle charge is still active; **"Estimating…"** when rate is unknown |
 | Current Now | `+` = charging, `−` = discharging |
 | Pack Power | Watts into/out-of the battery pack right now |
 | Today Range | The min/max charge level touched today |
@@ -277,6 +278,7 @@
 | Total Op. Hours | Hours the battery has been active, ever (cumulative lifetime) |
 | Load Avg | Unix 1-minute, 5-minute, 15-minute CPU load averages |
 | Processes | Total number of active processes at report time |
+| Python | Python runtime version used to generate the report |
 
 ### CPU
 | Field | Meaning |

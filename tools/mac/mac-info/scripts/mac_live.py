@@ -373,7 +373,7 @@ def render(d, model, interval):
     if d["ext"]:
         pwr_line = (f"  Wall Input     : {d['wall_w']:.2f} W  "
                     f"({d['v_in']:.2f} V × {d['a_in']:.3f} A)")
-        batt_line = (f"  Battery {'In ' if d['is_chg'] else 'Out'}    : "
+        batt_line = (f"  Battery {'In ' if d['batt_pwr'] >= 0 else 'Out'}    : "
                      f"{abs(d['batt_pwr']):.2f} W  ·  "
                      f"System: {d['sys_load']:.2f} W")
     else:
@@ -411,7 +411,7 @@ def render(d, model, interval):
     if d["per_core"]:
         for ci in range(0, len(d["per_core"]), 4):
             chunk = d["per_core"][ci:ci + 4]
-            prefix = "  Per-Core       : " if ci == 0 else " " * 20
+            prefix = "  Per-Core       : " if ci == 0 else " " * 19
             per_core_rows.append(
                 prefix + "  ".join(f"C{ci + j}:{v:.0f}%" for j, v in enumerate(chunk))
             )
