@@ -83,6 +83,10 @@ def collect(prev_net, prev_disk):
     cycle_cnt   = ri(raw, r'"CycleCount"\s*=\s*(\d+)')
     health_pct  = round(raw_max_cap / design_cap * 100) if design_cap else 0
     low_pwr     = run(["sysctl", "-n", "kern.lowpowermode"]).strip() == "1"
+    daily_min   = ri(raw, r'"DailyMinSoc"\s*=\s*(\d+)')
+    daily_max   = ri(raw, r'"DailyMaxSoc"\s*=\s*(\d+)')
+    adp_name_m  = re.search(r'"Name"\s*=\s*"([^"]+)"', raw)
+    adp_name    = adp_name_m.group(1).strip() if adp_name_m else ""
 
     # ── power telemetry ──
     ptd_m = re.search(r'"PowerTelemetryData"\s*=\s*\{([^}]+)\}', raw)
@@ -251,6 +255,26 @@ def collect(prev_net, prev_disk):
     rx_delta = max(0, now_net_rx - prev_net[0])
     tx_delta = max(0, now_net_tx - prev_net[1])
 
+    # ── disk free space ──
+    if HAS_PSUTIL:
+        _du = _psutil.disk_usage("/")
+        disk_free_gb  = _du.free  / 1e9
+        disk_total_gb = _du.total / 1e9
+        disk_used_pct = _du.percent
+    else:
+        _df = run(["df", "-k", "/"])
+        _dfm = re.search(r'\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%', _df)
+        if _dfm:
+            _total = int(_dfm.group(1)) * 1024
+            _used  = int(_dfm.group(2)) * 1024
+            _free  = int(_dfm.group(3)) * 1024
+            disk_free_gb  = _free  / 1e9
+            disk_total_gb = _total / 1e9
+            disk_used_pct = int(_dfm.group(4))
+        else:
+            disk_free_gb = disk_total_gb = 0.0
+            disk_used_pct = 0
+
     # ── disk I/O delta ──
     now_disk_r, now_disk_w = 0, 0
     if HAS_PSUTIL:
@@ -267,6 +291,9 @@ def collect(prev_net, prev_disk):
         "v_in": v_in, "a_in": a_in, "adp_w": adp_w,
         "ttf": ttf, "tte": tte,
         "health_pct": health_pct, "cycle_cnt": cycle_cnt, "low_pwr": low_pwr,
+        "daily_min": daily_min, "daily_max": daily_max,
+        "adp_name": adp_name, "adp_w": adp_w,
+        "disk_free_gb": disk_free_gb, "disk_total_gb": disk_total_gb, "disk_used_pct": disk_used_pct,
         "thermal": thermal, "uptime_str": uptime_str, "wifi_ssid": wifi_ssid,
         "cpu_pct": pct, "cpu_user": cpu_user, "cpu_sys": cpu_sys,
         "freq": freq, "per_core": per_core,
@@ -379,12 +406,16 @@ def render(d, model, interval):
         f"  Pack Power     : {abs(d['batt_pwr']):.2f} W  ({'→ charging into pack' if d['is_chg'] else '← draining from pack'})",
         f"  Voltage        : {d['voltage']:.3f} V  ·  Current : {abs(d['amp']):.3f} A  ({'+ chg' if d['amp'] > 0 else '- dis'})",
         f"  Temperature    : {d['temp']:.1f} °C  ·  Low Power : {'On 🟡' if d['low_pwr'] else 'Off'}",
+        *([ f"  Today Range    : {d['daily_min']}% – {d['daily_max']}%  (min / max SOC today)" ]
+           if d["daily_max"] > 0 else []),
         f"  {'─' * (WIDTH - 4)}",
         f"  Health         : {bar(d['health_pct'], width=16, decimals=0)}  ·  Cycles : {d['cycle_cnt']}",
         "",
         SEP,
         "  ⚡  POWER FLOW",
         SEP,
+        *([f"  Adapter        : {d['adp_name']}  ({d['adp_w']} W rated)"]
+           if d["ext"] and d["adp_name"] else []),
         f"  Source         : {src}",
         pwr_line,
         batt_line,
@@ -431,6 +462,7 @@ def render(d, model, interval):
         SEP,
         "  💿  DISK  (since last refresh)",
         SEP,
+        f"  Free      : {d['disk_free_gb']:.1f} GB  /  {d['disk_total_gb']:.1f} GB  ({d['disk_free_gb'] / d['disk_total_gb'] * 100:.0f}% free)" if d['disk_total_gb'] else "  Free      : N/A",
         f"  Read      : {dr_str}",
         f"  Write     : {dw_str}",
         "",
