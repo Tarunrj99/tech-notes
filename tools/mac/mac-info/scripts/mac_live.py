@@ -408,7 +408,6 @@ def render(d, model, interval):
         f"║  {credit:<{WIDTH - 6}}  ║",
         f"║  {header_sub:<{WIDTH - 6}}  ║",
         f"╚{'═' * (WIDTH - 2)}╝",
-        "",
         SEP,
         "  🔋  BATTERY",
         SEP,
@@ -422,7 +421,6 @@ def render(d, model, interval):
            if d["daily_max"] > 0 else []),
         f"  {'─' * (WIDTH - 4)}",
         f"  Health         : {bar(d['health_pct'], width=16, decimals=0)}  ·  Cycles : {d['cycle_cnt']}",
-        "",
         SEP,
         "  ⚡  POWER FLOW",
         SEP,
@@ -431,7 +429,6 @@ def render(d, model, interval):
         f"  Source         : {src}",
         pwr_line,
         batt_line,
-        "",
         SEP,
         "  ⚙️   CPU",
         SEP,
@@ -440,14 +437,12 @@ def render(d, model, interval):
         f"  Load Avg       : {bar(load_bar_pct, width=16, reverse=True)}  {d['l1']:.2f}{load_trend} · {d['l5']:.2f} · {d['l15']:.2f}",
         f"  Thermal        : {d['thermal']}  {therm_dot}",
         *per_core_rows,
-        "",
         SEP,
         "  💾  MEMORY",
         SEP,
         f"  Usage          : {bar(d['mem_pct'], reverse=True)}",
         f"  Active / Wired : {d['active_gb']:.2f} GB  /  {d['wired_gb']:.2f} GB",
         f"  Compressed     : {d['comp_gb']:.2f} GB  ·  Swap : {d['swap_used']:.2f} / {d['swap_total']:.2f} GB",
-        "",
         SEP,
         "  📋  TOP PROCESSES",
         SEP,
@@ -461,23 +456,20 @@ def render(d, model, interval):
         f"  {'─'*7}  {'─'*5}  {'─'*5}  {'─'*34}",
         *[f"  {pid:<7}  {cpu:>5.1f}  {mem:>5.1f}  {name}"
           for cpu, mem, pid, name in d["top_by_mem"]],
-        "",
         SEP,
         "  🌐  NETWORK  (since last refresh)",
         SEP,
         f"  WiFi      : {d['wifi_ssid']}",
         f"  Download  : {rx_str}",
         f"  Upload    : {tx_str}",
-        "",
         SEP,
         "  💿  DISK  (since last refresh)",
         SEP,
         f"  Free      : {d['disk_free_gb']:.1f} GB  /  {d['disk_total_gb']:.1f} GB  ({d['disk_free_gb'] / d['disk_total_gb'] * 100:.0f}% free)" if d['disk_total_gb'] else "  Free      : N/A",
         f"  Read      : {dr_str}",
         f"  Write     : {dw_str}",
-        "",
+        SEP,
         f"  Press Ctrl+C to exit",
-        "",
     ]
     return lines
 
@@ -539,8 +531,30 @@ def main():
             lines = render(d, short, REFRESH_SECS)
 
             sys.stdout.write("\033[H")          # jump to top-left each refresh
-            for line in lines:
+
+            # Adapt to terminal height — never overflow (prevents top sections
+            # being pushed off screen when content is taller than the window).
+            try:
+                th = os.get_terminal_size().lines
+            except OSError:
+                th = 9999
+
+            if len(lines) > th - 1:
+                # Show as many lines as fit; replace the last visible line with a notice
+                visible = lines[:th - 2]
+                n_hidden = len(lines) - len(visible)
+                visible.append(
+                    f"\033[2m  ↓  {n_hidden} more lines — make terminal taller to see all\033[0m"
+                )
+                render_lines = visible
+            else:
+                render_lines = lines
+
+            for line in render_lines:
                 sys.stdout.write(f"\033[K{line}\n")   # clear-to-eol then print
+            # Clear any leftover lines from a previous taller render
+            for _ in range(len(render_lines), th):
+                sys.stdout.write("\033[K\n")
             sys.stdout.flush()
 
             sleep_for = max(0.1, REFRESH_SECS - (time.monotonic() - t_start))
