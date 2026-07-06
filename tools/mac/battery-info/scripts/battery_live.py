@@ -6,7 +6,7 @@ Refreshes key metrics every 3 seconds, rewriting in-place.
 Press Ctrl+C to exit.
 
 One-liner:
-  curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash -s -- --live
+  bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --live
 
 Local run:
   python3 tools/mac/battery-info/scripts/battery_live.py

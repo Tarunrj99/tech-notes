@@ -9,7 +9,7 @@ A single Python script that prints a real-time, richly detailed report of your M
 ## ⚡ Single Command — Fetch, Install & Run
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh)
 ```
 
 > This one command does everything:
@@ -25,7 +25,7 @@ curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac
 ## 📺 Live Monitor (Real-Time Dashboard)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash -s -- --live
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --live
 ```
 
 > Launches a **live, in-place updating dashboard** (like `htop`) that refreshes every 3 seconds.  
@@ -68,7 +68,7 @@ python3 tools/mac/battery-info/scripts/battery_live.py
 ### Save to Desktop (default path)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash -s -- --export
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --export
 ```
 
 > Saves to: `~/Desktop/battery-report-YYYY-MM-DD-HH-MM.txt`
@@ -77,7 +77,7 @@ curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac
 ### Save to a custom path
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh | bash -s -- --export ~/Documents/my-report.txt
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/battery-info/run.sh) --export ~/Documents/my-report.txt
 ```
 
 ### How export works
