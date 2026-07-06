@@ -16,7 +16,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/to
 > 1. Shows an animated spinner that stays visible through setup AND report generation (~15 s) — disappears cleanly before the report is displayed
 > 2. Checks that Python 3.8+ is installed
 > 3. Auto-installs the `psutil` package if missing (handles PEP 668 / Homebrew Python)
-> 4. Downloads `battery_info.py` to a temp file
+> 4. Downloads `mac_info.py` to a temp file
 > 5. Runs the full report; stdout is buffered so the spinner stays clean until Python finishes
 > 6. Cleans up all temp files on exit
 
@@ -36,13 +36,13 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/to
 | Section | Fields |
 |---|---|
 | **Header** | Model · chip · timestamp · system uptime |
-| **Battery** | Level bar, status, time to full/remaining, voltage, temp, current, health %, cycle count |
-| **Power Flow** | Source, wall input (V × A), battery in/out, system load |
+| **Battery** | Level bar, status, time to full/remaining, pack power (W), voltage, current, temp, low-power mode, today min/max SOC, health %, cycle count |
+| **Power Flow** | Adapter name & rated wattage, source, wall input (V × A), battery in/out, system load |
 | **CPU** | Usage bar, user/sys%, load avg bar with trend arrow (↑↓→), thermal pressure, per-core % |
 | **Memory** | Usage bar, active/wired, compressed, swap |
 | **Top Processes** | Top 3 by CPU and top 3 by Memory (PID, CPU%, MEM%, name) |
 | **Network** | WiFi SSID, download/upload speed since last refresh |
-| **Disk** | Read/write speed since last refresh |
+| **Disk** | Free space (GB / GB, % free), read/write speed since last refresh |
 
 ### Colour key
 

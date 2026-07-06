@@ -1,6 +1,6 @@
 # Mac Tools
 
-macOS-specific scripts and utilities — runnable with a single `curl | bash` command that auto-installs any optional dependencies.
+macOS-specific scripts and utilities — runnable with a single `bash <(curl ...)` command that auto-installs any optional dependencies.
 
 [Back to tools/](../README.md) · [Back to repo root](../../README.md)
 

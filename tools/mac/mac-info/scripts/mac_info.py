@@ -664,7 +664,7 @@ if ext_conn:
   Adapter Rating  : {adp_watts} W  (rated max)
   Negotiated PD   : {pd_neg_v:.0f} V × {pd_neg_a:.1f} A = {pd_max_w:.0f} W  (USB-C PD profile {pd_idx})
   Wall Draw Now   : {wall_w:.2f} W  ({sys_v_mv/1000:.2f} V × {sys_i_ma/1000:.3f} A)
-  Adapter Usage   : {bar(pd_util_pct, 20, neutral=True)}
+  Adapter Usage   : {bar(pd_util_pct, 20, reverse=True)}
   Headroom Left   : {pd_headroom:.1f} W  (unused capacity)""")
 else:
     lines.append(f"""  Connected       : No ❌  (running on internal battery)

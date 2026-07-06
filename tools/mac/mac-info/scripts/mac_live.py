@@ -317,7 +317,7 @@ def render(d, model, interval):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     title_left  = f"🍎  Live Monitor  ·  {model}"
     title_right = f"↺ {interval}s"
-    pad = WIDTH - 2 - len(title_left) - len(title_right)
+    pad = WIDTH - 4 - len(title_left) - len(title_right)
     title_line = f"║ {title_left}{' ' * max(0, pad)}{title_right} ║"
 
     # Thermal dot
