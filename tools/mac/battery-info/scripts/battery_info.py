@@ -727,10 +727,11 @@ if disk_read_gb or disk_write_gb:
     _io_lifetime = f"\n  Read (lifetime) : {disk_read_gb:.2f} GB  |  Write: {disk_write_gb:.2f} GB"
 lines.append(f"""  Storage         : {ssd_model}  ({ssd_capacity})
   Usage           : {bar(disk_pct, reverse=True)}
-  Container Total : {disk_total_gb:.1f} GB  (physical SSD size)
-  System Volume   : {disk_sys_gb:.1f} GB  (macOS system files, read-only)
+  Container Total : {disk_total_gb:.1f} GB  (physical SSD)
+  System Volume   : {disk_sys_gb:.1f} GB  (macOS system, read-only sealed snapshot)
   Data Volume     : {disk_data_gb:.1f} GB  (apps, user files, documents)
-  Container Free  : {disk_free_gb:.1f} GB  (available for new data)
+  Container Free  : {disk_free_gb:.1f} GB  (raw unallocated blocks)
+  ⓘ System Settings may show ~5-10 GB more free — it adds purgeable caches
   I/O (now)       : {disk_tps:.0f} tps · {disk_mbs:.2f} MB/s  (disk0){_io_lifetime}""")
 
 # ── 13. NETWORK ───────────────────────────────────────────────────────────────
