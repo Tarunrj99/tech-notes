@@ -84,7 +84,7 @@ install_pkg psutil
 
 # ── 4. Download & run the report ───────────────────────────────────────────
 echo "🔍  Fetching report script…"
-TMP_SCRIPT=$(mktemp /tmp/mac_battery_info_XXXXX.py)
+TMP_SCRIPT=$(mktemp "${TMPDIR:-/tmp}/mac_battery_info_XXXXXXXX")
 
 # Always delete the temp file when the script exits (success, error, or signal).
 trap 'rm -f "${TMP_SCRIPT}"' EXIT
