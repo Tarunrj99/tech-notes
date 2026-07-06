@@ -564,32 +564,29 @@ if HAS_PSUTIL:
         pass
 
 # ── Network I/O (netstat — always available) ──────────────────────────────────
+# Each interface appears multiple times in netstat -ib (once per address family).
+# Only the <Link#N> row contains the hardware-level cumulative byte counters.
+# Counting any other row duplicates the same bytes and inflates the total.
 net_raw   = run(["netstat", "-ib"])
 net_rx_bytes = net_tx_bytes = 0
+net_per_iface = {}   # per-interface bytes from the Link# row (accurate since-boot total)
 for line in net_raw.splitlines():
     parts = line.split()
     # netstat -ib columns: Name MTU Network Address Ipkts Ierrs Ibytes Opkts Oerrs Obytes Coll
-    if len(parts) >= 10 and re.match(r"^en\d", parts[0]) and parts[3] not in ("<Link#", "N/A"):
+    # Only count the <Link#N> row — it appears exactly once per interface and holds
+    # the true cumulative hardware counters. All other rows duplicate the same bytes.
+    if len(parts) >= 10 and re.match(r"^en\d", parts[0]) and '<Link#' in parts[2]:
         try:
-            net_rx_bytes += int(parts[6])
-            net_tx_bytes += int(parts[9])
+            rx = int(parts[6])
+            tx = int(parts[9])
+            net_rx_bytes += rx
+            net_tx_bytes += tx
+            net_per_iface[parts[0]] = (rx / (1024**3), tx / (1024**3))
         except (ValueError, IndexError):
             pass
 
 net_rx_gb = net_rx_bytes / (1024**3)
 net_tx_gb = net_tx_bytes / (1024**3)
-
-# Per-interface I/O (psutil)
-net_per_iface = {}
-if HAS_PSUTIL:
-    try:
-        _nics = _psutil.net_io_counters(pernic=True)
-        for iface, counters in _nics.items():
-            if re.match(r"^en\d", iface) and (counters.bytes_recv + counters.bytes_sent) > 0:
-                net_per_iface[iface] = (counters.bytes_recv / (1024**3),
-                                        counters.bytes_sent / (1024**3))
-    except Exception:
-        pass
 
 
 # ───────────────────────────── derived values ──────────────────────────────────
