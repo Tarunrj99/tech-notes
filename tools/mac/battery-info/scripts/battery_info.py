@@ -112,17 +112,17 @@ def bar(pct, width=24, reverse=False, neutral=False):
 
 
 def health_label(pct):
-    if pct >= 90: return "Excellent ✅"
-    if pct >= 80: return "Good 🟢"
-    if pct >= 70: return "Fair 🟡"
-    if pct >= 60: return "Degraded 🟠"
-    return "Poor 🔴"
+    if pct >= 90: return "Excellent"
+    if pct >= 80: return "Good"
+    if pct >= 70: return "Fair"
+    if pct >= 60: return "Degraded"
+    return "Poor"
 
 
 def mem_label(used_pct):
-    if used_pct < 60: return "Normal ✅"
-    if used_pct < 80: return "Moderate 🟡"
-    return "High pressure 🔴"
+    if used_pct < 60: return "Normal"
+    if used_pct < 80: return "Moderate"
+    return "High"
 
 
 def strip_ansi(text):
@@ -449,8 +449,12 @@ nwi_raw  = run(["scutil", "--nwi"])
 ipv6_m   = re.search(r"address\s*:\s*((?:[0-9a-fA-F]{1,4}:){2,}[0-9a-fA-F:]+)", nwi_raw)
 ipv6     = ipv6_m.group(1) if ipv6_m else "N/A"
 
-# Public IP (optional, requires network — safe no-op if offline)
-pub_ip = run(["curl", "-s", "--max-time", "3", "https://api.ipify.org"], "unavailable")
+# Public IPs — IPv4 forced with -4, IPv6 forced with -6 (safe no-op if offline)
+# IPv6 NOTE: the LOCAL address on the interface is the stable SLAAC address;
+# the PUBLIC IPv6 (seen by remote servers) uses macOS privacy extensions and
+# is different — fetched separately from api6.ipify.org.
+pub_ip   = run(["curl", "-4", "-s", "--max-time", "3", "https://api.ipify.org"],  "unavailable")
+pub_ipv6 = run(["curl", "-6", "-s", "--max-time", "3", "https://api6.ipify.org"], "unavailable")
 
 # WiFi signal quality — only parse when actually connected
 wifi_info = run(["system_profiler", "SPAirPortDataType"]) if wifi_connected else ""
@@ -628,6 +632,7 @@ lines = []
 lines.append(f"""
 ╔══════════════════════════════════════════════════════════════════╗
 ║      🍎  Mac System & Battery Report  ·  {now_str}     ║
+║{"Tarun Saini".center(66)}║
 ╚══════════════════════════════════════════════════════════════════╝""")
 
 # ── 1. MACHINE ────────────────────────────────────────────────────────────────
@@ -710,7 +715,7 @@ if _scr:
 
 # ── 6. BATTERY — HEALTH ───────────────────────────────────────────────────────
 lines.append(section("🩺  BATTERY — HEALTH"))
-lines.append(f"""  Health          : {bar(health_pct)}  →  {health_label(health_pct)}
+lines.append(f"""  Health          : {bar(health_pct)}  ({health_label(health_pct)})
   Max Capacity    : {raw_max_cap:,} mAh  ←  design was {design_cap:,} mAh  (lost {design_cap - raw_max_cap:,} mAh)
   Nominal Cap     : {nominal_cap:,} mAh
   Current Charge  : {raw_cur_cap:,} mAh
@@ -762,7 +767,7 @@ else:
 # ── 11. MEMORY ─────────────────────────────────────────────────────────────────
 lines.append(section("💾  MEMORY"))
 _swap_note = " (encrypted)" if swap_enc else ""
-lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  →  {mem_label(mem_used_pct)}
+lines.append(f"""  Usage           : {bar(mem_used_pct, reverse=True)}  ({mem_label(mem_used_pct)})
   Total           : {mem_total_gb:.1f} GB
   Active          : {mem_act_gb:.2f} GB  (in use by apps)
   Wired           : {mem_wired_gb:.2f} GB  (kernel, locked)
@@ -788,8 +793,9 @@ lines.append(f"""  Storage         : {ssd_model}  ({ssd_capacity})
 lines.append(section("🌐  NETWORK"))
 _wifi_status = wifi_ssid if wifi_connected else "Not connected"
 lines.append(f"""  IPv4  (en0)     : {ipv4}
-  IPv6            : {ipv6}
-  Public IP       : {pub_ip}
+  Local IPv6      : {ipv6}
+  Public IP (v4)  : {pub_ip}
+  Public IP (v6)  : {pub_ipv6}
   Wi-Fi SSID      : {_wifi_status}""")
 if wifi_connected:
     lines.append(f"""  Wi-Fi Channel   : {wifi_ch}

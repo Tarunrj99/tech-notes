@@ -38,11 +38,14 @@ _spin() {
     # Start new spinner if TTY and message provided
     if $_HAS_TTY && [ -n "${1:-}" ]; then
         local msg="$1"
+        # </dev/null prevents the subshell from reading bash's stdin, which
+        # is the curl pipe when running "curl | bash" — without this the
+        # background process can accidentally consume script bytes mid-read.
         ( i=0; f="⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
           while true; do
               printf "\r  %s  %s  " "${f:$((i % 10)):1}" "$msg"
               sleep 0.08; i=$(( i + 1 ))
-          done ) &
+          done ) </dev/null &
         _SPIN_PID=$!
     fi
 }
@@ -95,7 +98,8 @@ if ! curl -fsSL "${SCRIPT_URL}" -o "${TMP_SCRIPT}" 2>/dev/null; then
 fi
 
 # ── 5. Clear spinner and run the report ────────────────────────────────────
-# The animated line disappears; the Python report output starts on a clean terminal.
+# Hold "Fetching report" visible briefly so the animation is seen, then erase.
+sleep 0.4
 _spin
 
 python3 "${TMP_SCRIPT}" "$@"

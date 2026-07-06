@@ -180,11 +180,11 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 
 | Range | Label |
 |---|---|
-| ≥ 90% | Excellent ✅ |
-| 80–89% | Good 🟢 |
-| 70–79% | Fair 🟡 |
-| 60–69% | Degraded 🟠 |
-| < 60% | Poor 🔴 |
+| ≥ 90% | Excellent |
+| 80–89% | Good |
+| 70–79% | Fair |
+| 60–69% | Degraded |
+| < 60% | Poor |
 
 ---
 
@@ -244,7 +244,7 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 | Free | Immediately available pages |
 | **Swap** | Pages written to SSD as overflow (`sysctl vm.swapusage`); always AES-encrypted on Apple Silicon |
 
-**Pressure labels:** Normal ✅ (< 60%) · Moderate 🟡 (60–80%) · High pressure 🔴 (> 80%)
+**Pressure labels:** Normal (< 60%) · Moderate (60–80%) · High (> 80%)
 
 ---
 
@@ -268,8 +268,9 @@ Balance check: 8.37 + 20.89 = 29.26 W  ≈ 29.25 W ✓
 | Field | What it shows |
 |---|---|
 | IPv4 | Local IP address on the primary interface (en0) |
-| IPv6 | IPv6 address |
-| Public IP | Your external/WAN IP fetched from `api.ipify.org` |
+| Local IPv6 | Stable SLAAC address on en0 (used for incoming connections) |
+| Public IP (v4) | External IPv4 seen by remote servers (`api.ipify.org`) |
+| Public IP (v6) | Public IPv6 using macOS privacy extension — matches whatismyip.com (`api6.ipify.org`) |
 | Wi-Fi SSID | Connected Wi-Fi network name (blank section if not on Wi-Fi) |
 | Wi-Fi Channel | Channel and band — only shown when associated to an SSID |
 | Signal / Noise | RSSI signal strength vs noise floor in dBm |
