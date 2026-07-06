@@ -201,8 +201,8 @@
   Power Source    : AC Power
   Sleep Timer     : 1 min
   Disk Sleep      : 10 min
-  Half-dim        : disabled
-  Lid Wake        : disabled
+  Half-dim        : N/A
+  Lid Wake        : N/A
   Sleep prevented : Yes (assertion active)
   Low Power Mode  : Off
 ```
@@ -335,4 +335,6 @@
 |-------|---------|
 | Sleep Timer | Inactivity delay before system sleep (`pmset sleep`) |
 | Disk Sleep | Inactivity delay before disk spin-down (`pmset disksleep`) |
+| Half-dim | Shows `enabled`/`disabled` when reported by `pmset`; shows `N/A` on macOS 15 Sequoia+ |
+| Lid Wake | Shows `enabled`/`disabled` when reported by `pmset`; shows `N/A` on macOS 15 Sequoia+ |
 | Sleep prevented | `PreventUserIdleSystemSleep` assertion is active (e.g. a video call or download is running) |

@@ -287,8 +287,8 @@ Shows **two sub-tables**: "By CPU" (top 5 sorted by CPU%) and "By Memory" (top 5
 | Power Source | AC Power or Battery Power |
 | Sleep Timer | Minutes until system sleep (0 = disabled) |
 | Disk Sleep | Disk spin-down / SSD power-down timer |
-| Half-dim | Whether display dims at 50% brightness before sleeping |
-| Lid Wake | Whether opening the lid wakes the Mac |
+| Half-dim | Whether display dims at 50% before sleeping — shows `N/A` on macOS 15 Sequoia+ (no longer reported by `pmset`) |
+| Lid Wake | Whether opening the lid wakes the Mac — shows `N/A` on macOS 15 Sequoia+ (managed by the OS, not `pmset`) |
 | Sleep prevented | `PreventUserIdleSystemSleep` assertion active (e.g. video call, download in progress) |
 | Low Power Mode | On / Off (reduces background CPU to extend battery life) |
 
