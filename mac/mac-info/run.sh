@@ -7,21 +7,21 @@
 # USAGE (fetch & run from GitHub in one command):
 #
 #   Normal report:
-#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh)
+#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh)
 #
 #   Live monitor (real-time dashboard, Ctrl+C to exit):
-#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --live
+#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh) --live
 #
 #   Export to Desktop (mac-report-<timestamp>.txt):
-#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --export
+#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh) --export
 #
 #   Export to a custom path:
-#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --export ~/Documents/my-report.txt
+#     bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh) --export ~/Documents/my-report.txt
 #
 set -euo pipefail
 
-SCRIPT_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/scripts/mac_info.py"
-LIVE_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/scripts/mac_live.py"
+SCRIPT_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/scripts/mac_info.py"
+LIVE_URL="https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/scripts/mac_live.py"
 
 # Detect --live flag
 _LIVE_MODE=false

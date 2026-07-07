@@ -2,7 +2,7 @@
 
 > Setup guides, configuration notes, and reusable assets for developer tools, IDEs, and CLI utilities.
 
-[Back to repo root](../README.md) · [Repo conventions](../AGENTS.md) · [`cloud/`](../cloud/) · [`linux/`](../linux/) · [`kubernetes/`](../kubernetes/) · [`ai-prompts/`](../ai-prompts/)
+[Back to repo root](../README.md) · [Repo conventions](../AGENTS.md) · [`cloud/`](../cloud/) · [`linux/`](../linux/) · [`kubernetes/`](../kubernetes/) · [`mac/`](../mac/) · [`ai-prompts/`](../ai-prompts/)
 
 ---
 
@@ -12,7 +12,6 @@
 | --- | --- |
 | [`cursor/`](cursor/README.md) | Cursor IDE — rules setup guide + 6 drop-in `.mdc` rules |
 | [`github/`](github/README.md) | GitHub — Apps, Actions, org-wide automation patterns |
-| [`mac/`](mac/README.md) | macOS scripts — system info, battery health, power diagnostics, live monitor |
 
 *(More tool folders will be added here as they are published — e.g. `vscode/`, `gh-cli/`, `terraform/`.)*
 

@@ -9,7 +9,7 @@ A single Python script that prints a richly detailed snapshot of your Mac — ba
 ## ⚡ Single Command — Fetch, Install & Run
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh)
 ```
 
 > This one command does everything:
@@ -25,7 +25,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/to
 ## 📺 Live Monitor (Real-Time Dashboard)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --live
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh) --live
 ```
 
 > Launches a **live, in-place updating dashboard** (like `htop`) that refreshes every 3 seconds.  
@@ -58,7 +58,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/to
 ### Local run
 
 ```bash
-python3 tools/mac/mac-info/scripts/mac_live.py
+python3 mac/mac-info/scripts/mac_live.py
 ```
 
 ---
@@ -68,7 +68,7 @@ python3 tools/mac/mac-info/scripts/mac_live.py
 ### Save to Desktop (default path)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --export
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh) --export
 ```
 
 > Saves to: `~/Desktop/mac-report-YYYY-MM-DD-HH-MM.txt`
@@ -77,7 +77,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/to
 ### Save to a custom path
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh) --export ~/Documents/my-report.txt
+bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh) --export ~/Documents/my-report.txt
 ```
 
 ### How export works
@@ -100,14 +100,14 @@ git clone https://github.com/Tarunrj99/tech-notes.git
 cd tech-notes
 
 # Run the bootstrap (installs psutil, runs report)
-bash tools/mac/mac-info/run.sh
+bash mac/mac-info/run.sh
 
 # Or run the script directly (basic mode, no psutil install)
-python3 tools/mac/mac-info/scripts/mac_info.py
+python3 mac/mac-info/scripts/mac_info.py
 
 # Run with export
-python3 tools/mac/mac-info/scripts/mac_info.py --export
-python3 tools/mac/mac-info/scripts/mac_info.py --export ~/Desktop/report.txt
+python3 mac/mac-info/scripts/mac_info.py --export
+python3 mac/mac-info/scripts/mac_info.py --export ~/Desktop/report.txt
 ```
 
 ---

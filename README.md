@@ -81,6 +81,12 @@ Think of it as a **personal runbook + public knowledge base**. Bookmark a note o
 | --- | --- | --- | --- |
 | [Ubuntu VM — XFCE desktop + RDP access from CLI](linux/ubuntu-vm-xfce-rdp-setup-guide.md) | Headless Ubuntu VM → full XFCE desktop accessible via RDP (Windows App / Microsoft Remote Desktop). Cloud-agnostic: works on local VMs, GCP, AWS, and Azure. | Ubuntu 26.04 | stable |
 
+### macOS
+
+| Tool | What you get | Run | Status |
+| --- | --- | --- | --- |
+| [Mac System Info + Live Monitor](mac/mac-info/) | Full macOS snapshot — battery health, charging & power flow, CPU, memory, disk, network, thermals, top processes. Includes a live real-time dashboard (like `htop`) that refreshes every 3 s. | `bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh)` | stable |
+
 ### Tools
 
 | Note | What you'll learn | Audience | Status |
@@ -130,6 +136,10 @@ tech-notes/
 │   ├── README.md
 │   └── ubuntu-vm-xfce-rdp-setup-guide.md
 │
+├── mac/                               ← macOS scripts and utilities
+│   ├── README.md
+│   └── mac-info/                      ← battery, power, CPU, memory, disk, network — static + live monitor
+│
 └── tools/                             ← IDE rules, CLI configs, dev environment setups
     ├── README.md
     ├── cursor/
@@ -147,7 +157,7 @@ tech-notes/
         └── org-github-app-for-cicd-setup-guide.md
 ```
 
-> Folders are added as content lands — empty folders aren't tracked. Future planned folders include `cloud/azure/`, `docker/`, `networking/`, `snippets/`.
+> Folders are added as content lands — empty folders aren't tracked. Future planned folders include `cloud/azure/`, `docker/`, `networking/`, `snippets/`, `mac/`.
 
 ---
 

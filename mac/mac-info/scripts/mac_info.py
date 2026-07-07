@@ -24,7 +24,7 @@ Usage:
   python3 mac_info.py --export /path/file.txt  # save to custom path
 
 One-liner (fetch + auto-install deps + run):
-  bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/tools/mac/mac-info/run.sh)
+  bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh)
 """
 
 import subprocess, re, sys, os
