@@ -1,7 +1,7 @@
 # tech-notes
 
 **A personal tech knowledge base.**
-Step-by-step setup guides, reusable AI prompts, IDE rules, and troubleshooting notes for cloud, Linux, Kubernetes, Docker, and developer tooling — every command tested on real systems.
+Step-by-step setup guides, reusable AI prompts, IDE rules, and troubleshooting notes for cloud, Linux, Kubernetes, macOS, Docker, and developer tooling — every command tested on real systems.
 
 *One repo. Everything I've ever set up. Copy-paste ready.*
 
