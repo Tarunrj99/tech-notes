@@ -102,8 +102,15 @@ cd tech-notes
 # Run the bootstrap (installs psutil, runs report)
 bash mac/mac-info/run.sh
 
-# Or run the script directly (basic mode, no psutil install)
+# Run the live monitor
+bash mac/mac-info/run.sh --live
+
+# Run with export
+bash mac/mac-info/run.sh --export
+
+# Or run the scripts directly (basic mode, no psutil install)
 python3 mac/mac-info/scripts/mac_info.py
+python3 mac/mac-info/scripts/mac_live.py
 
 # Run with export
 python3 mac/mac-info/scripts/mac_info.py --export
