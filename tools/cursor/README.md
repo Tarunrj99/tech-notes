@@ -32,6 +32,7 @@ cp tools/cursor/rules/git-commit-format.mdc ~/.cursor/rules/
 | Rule | What it does | When it triggers |
 |---|---|---|
 | `git-commit-format.mdc` | Enforce Conventional Commits message style | On request — when writing commit messages |
+| `no-cursor-trailer.mdc` | Hard ban on `Co-authored-by: Cursor` — three-layer auto protection (global git template + Cursor hook + rule) | Always on (every session) |
 | `devops-kubernetes.mdc` | YAML/Helm/Kubernetes conventions | Auto-loads on `*.yaml` / `*.yml` files |
 | `shell-scripting.mdc` | Bash best practices (`set -euo pipefail`, error handling, etc.) | Auto-loads on `*.sh` files |
 | `docker-best-practices.mdc` | Dockerfile + Compose best practices | Auto-loads on `Dockerfile*` / `docker-compose*.yml` |
