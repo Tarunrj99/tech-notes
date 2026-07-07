@@ -1,0 +1,62 @@
+---
+description: Hard ban — strip Co-authored-by Cursor trailer from every git commit
+globs: ""
+alwaysApply: true
+---
+
+# No `Co-authored-by: Cursor` in Any Commit
+
+**NEVER** allow `Co-authored-by: Cursor <cursoragent@cursor.com>` to appear in any commit
+pushed to a remote. Cursor injects this trailer into every commit message at the agent
+level — the `grep -v` amend approach does **not** work because the agent re-injects the
+trailer during the amend itself.
+
+## The Fix — `commit-msg` Git Hook
+
+Install this hook once per repo. It strips the trailer before git finalises the commit:
+
+```bash
+cat > .git/hooks/commit-msg << 'EOF'
+#!/bin/sh
+grep -v '^Co-authored-by: Cursor' "$1" | grep -v '^Co-authored-by:.*cursoragent' > "$1.tmp" && mv "$1.tmp" "$1"
+exit 0
+EOF
+chmod +x .git/hooks/commit-msg
+```
+
+### Verify the hook is in place before your first commit in any repo
+
+```bash
+ls -la .git/hooks/commit-msg
+```
+
+If missing, install it (above) **before** committing anything.
+
+---
+
+## Fixing Already-Pushed Commits
+
+If the trailer slipped through on commits already on the remote:
+
+```bash
+# Rewrite all commit messages locally
+FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --msg-filter \
+  'grep -v "^Co-authored-by: Cursor"' -- --all
+
+# Force-push to replace remote history
+# (safe on personal repos; warn the team on shared repos first)
+git push --force origin <branch>
+```
+
+---
+
+## Why the Amend Approach Fails
+
+```
+# ❌ This does NOT work — Cursor re-injects the trailer during the amend
+git commit -m "msg"
+git commit --amend -m "$(git log -1 --pretty=%B | grep -v 'Co-authored-by')"
+```
+
+The `commit-msg` hook runs inside git's own commit process, **after** Cursor injects the
+trailer but **before** the commit is finalised — that is why it works where amend cannot.
