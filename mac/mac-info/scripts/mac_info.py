@@ -452,9 +452,18 @@ ipv6     = ipv6_m.group(1) if ipv6_m else "N/A"
 # Public IPs — IPv4 forced with -4, IPv6 forced with -6 (safe no-op if offline)
 # IPv6 NOTE: the LOCAL address on the interface is the stable SLAAC address;
 # the PUBLIC IPv6 (seen by remote servers) uses macOS privacy extensions and
-# is different — fetched separately from api6.ipify.org.
-pub_ip   = run(["curl", "-4", "-s", "--max-time", "3", "https://api.ipify.org"],  "unavailable")
-pub_ipv6 = run(["curl", "-6", "-s", "--max-time", "3", "https://api6.ipify.org"], "unavailable")
+# is different — fetched with a fallback chain across 3 endpoints.
+pub_ip = (
+    run(["curl", "-4", "-s", "--max-time", "3", "https://api.ipify.org"], "") or
+    run(["curl", "-4", "-s", "--max-time", "3", "https://ipv4.icanhazip.com"], "") or
+    "unavailable"
+)
+pub_ipv6 = (
+    run(["curl", "-6", "-s", "--max-time", "3", "https://api6.ipify.org"], "") or
+    run(["curl", "-6", "-s", "--max-time", "3", "https://ipv6.icanhazip.com"], "") or
+    run(["curl", "-s",  "--max-time", "3", "https://v6.ident.me"], "") or
+    "unavailable"
+)
 
 # WiFi signal quality — only parse when actually connected
 wifi_info = run(["system_profiler", "SPAirPortDataType"]) if wifi_connected else ""
