@@ -157,7 +157,7 @@ tech-notes/
         └── org-github-app-for-cicd-setup-guide.md
 ```
 
-> Folders are added as content lands — empty folders aren't tracked. Future planned folders include `cloud/azure/`, `docker/`, `networking/`, `snippets/`, `mac/`.
+> Folders are added as content lands — empty folders aren't tracked. Future planned folders include `cloud/azure/`, `docker/`, `networking/`, `snippets/`.
 
 ---
 
