@@ -1577,4 +1577,4 @@ security add-generic-password -s "cloudflare-account-id" -a "CLOUDFLARE_ACCOUNT_
 
 ---
 
-*Last updated: July 2026 · Part of [tech-notes](https://github.com/Tarunrj99/tech-notes)*
+*Last updated: August 2026 · Part of [tech-notes](https://github.com/Tarunrj99/tech-notes) · [Back to mac/](../README.md)*
