@@ -24,6 +24,61 @@
 
 ---
 
+## Quick Start — Step-by-Step Setup
+
+> New here? Follow these steps in order. Each step links to the full explanation.
+> You can skip services you don't use.
+
+### Phase 1 — One-time machine setup (do this first, once)
+
+| Step | What to do | Jump to |
+|------|-----------|---------|
+| **1** | Understand why Keychain beats `.env` and shell profiles | [Introduction](#introduction) |
+| **2** | Learn the 4 core commands: store, verify, export, delete | [General Keychain Commands](#general-keychain-commands) |
+| **3** | Create `~/.config/secrets/load-secrets.sh` on your machine | [Loading All Secrets at Once](#loading-all-secrets-at-once) |
+| **4** | Add the `load-secrets` alias to your `.zshrc` | [Sourcing the Script](#sourcing-the-script) |
+
+---
+
+### Phase 2 — Store your credentials (one per service)
+
+Pick only the services you use:
+
+| Service | What to store | Jump to |
+|---------|--------------|---------|
+| **AWS** | `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` | [AWS Credentials → Store in Keychain](#store-aws-credentials-in-keychain) |
+| **MongoDB** | `MONGODB_URI` (single connection string) | [MongoDB Atlas → Store in Keychain](#store-mongodb-uri-in-keychain) |
+| **Cloudflare** | `CLOUDFLARE_API_TOKEN` | [Cloudflare → Store in Keychain](#store-cloudflare-token-in-keychain) |
+
+---
+
+### Phase 3 — Use credentials in your project
+
+| Step | What to do | Jump to |
+|------|-----------|---------|
+| **5** | Run `source ~/.config/secrets/load-secrets.sh` at the start of any session | [Loading All Secrets at Once](#loading-all-secrets-at-once) |
+| **6** | Read env vars in your code — Node.js, Python, Go, etc. | [Using Credentials in Applications](#using-credentials-in-applications) |
+| **7** | Add `.gitignore` rules so secrets can never be committed | [Git Best Practices](#git-best-practices) |
+| **8** | Paste the AI rules into Cursor or Claude so they never ask for secrets | [AI Assistant Security Rules](#ai-assistant-security-rules) |
+
+---
+
+### Quick-lookup by goal
+
+| I want to… | Go to |
+|-----------|-------|
+| Store a secret right now | [Store a Secret](#store-a-secret) |
+| Export a secret to my shell | [Export a Secret as an Environment Variable](#export-a-secret-as-an-environment-variable) |
+| Set up AWS access keys | [AWS Credentials](#aws-credentials) |
+| Set up a MongoDB connection | [MongoDB Atlas](#mongodb-atlas) |
+| Set up a Cloudflare token | [Cloudflare](#cloudflare) |
+| Create one script to load everything | [load-secrets.sh](#load-secretssh) |
+| See all naming conventions at a glance | [Recommended Naming Convention](#recommended-naming-convention) |
+| Fix a Keychain error | [Troubleshooting](#troubleshooting) |
+| See all commands in one place | [Appendix — Cheat Sheet](#appendix--quick-reference-cheat-sheet) |
+
+---
+
 ## Introduction
 
 ### What is Apple Keychain?
