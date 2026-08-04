@@ -1,7 +1,7 @@
 # tech-notes
 
 **A personal tech knowledge base.**
-Step-by-step setup guides, reusable AI prompts, IDE rules, and troubleshooting notes for cloud, Linux, Kubernetes, macOS, Docker, and developer tooling — every command tested on real systems.
+Step-by-step setup guides, reusable AI prompts, IDE rules, and troubleshooting notes for cloud, Linux, Kubernetes, macOS, Docker, and developer tooling, every command tested on real systems.
 
 *One repo. Everything I've ever set up. Copy-paste ready.*
 
@@ -17,16 +17,16 @@ Step-by-step setup guides, reusable AI prompts, IDE rules, and troubleshooting n
 
 ## Why this repo exists
 
-Every engineer has the same recurring problem: *"I set this up six months ago — how exactly did I do it again?"*
+Every engineer has the same recurring problem: *"I set this up six months ago, how exactly did I do it again?"*
 
 Most answers end up scattered across browser bookmarks, Slack DMs, scratch files in `~/Downloads`, and half-remembered Stack Overflow threads. By the time you find them, the version you used is deprecated and the top-voted answer doesn't apply anymore.
 
 This repo is the opposite:
 
-- **Each note is self-contained** — purpose, prerequisites, copy-paste commands, troubleshooting, all in one file.
-- **Each note is dated and tested** — written from a real working setup, not from memory.
-- **Each note is sanitized** — real IPs, emails, and project IDs are replaced with `<placeholders>` so the file is safe to share publicly.
-- **Each note is portable** — cloud-agnostic where possible, with provider-specific commands listed side-by-side when they differ.
+- **Each note is self-contained**: purpose, prerequisites, copy-paste commands, troubleshooting, all in one file.
+- **Each note is dated and tested**: written from a real working setup, not from memory.
+- **Each note is sanitized**: real IPs, emails, and project IDs are replaced with `<placeholders>` so the file is safe to share publicly.
+- **Each note is portable**: cloud-agnostic where possible, with provider-specific commands listed side-by-side when they differ.
 
 Think of it as a **personal runbook + public knowledge base**. Bookmark a note once, follow it forever.
 
@@ -56,43 +56,44 @@ Think of it as a **personal runbook + public knowledge base**. Bookmark a note o
 | --- | --- | --- | --- |
 | [Google Docs HTML formatting](ai-prompts/google-docs-html-formatting/) | Universal AI prompt that converts any HTML file into a layout that pastes cleanly into Google Docs (proper headings, lists, tables, code blocks). Trigger phrase: `apply doc formatting`. | Cursor (`.mdc`), Claude Code (`SKILL.md`), ChatGPT, Gemini, any LLM | stable |
 
-### Cloud — AWS
+### Cloud: AWS
 
 | Note | What you'll set up | Tested with | Status |
 | --- | --- | --- | --- |
-| [SES — CloudWatch logging setup](cloud/aws/ses-cloudwatch-logging-setup-guide.md) | Per-email SES visibility (bounce / complaint / delivery) via SES → SNS → Lambda → CloudWatch. Drop-in CloudFormation template, deployed three times. Catches reputation problems **before** AWS enforces a SHUTDOWN. | SES + Lambda Python 3.12, CloudFormation, AWS CloudShell | stable |
+| [SES: CloudWatch logging setup](cloud/aws/ses-cloudwatch-logging-setup-guide.md) | Per-email SES visibility (bounce / complaint / delivery) via SES → SNS → Lambda → CloudWatch. Drop-in CloudFormation template, deployed three times. Catches reputation problems **before** AWS enforces a SHUTDOWN. | SES + Lambda Python 3.12, CloudFormation, AWS CloudShell | stable |
 
-### Cloud — GCP
+### Cloud: GCP
 
 | Note | What you'll set up | Tested with | Status |
 | --- | --- | --- | --- |
-| [GCS bucket — public file access & security](cloud/gcp/gcs-bucket-public-access-and-security-guide.md) | Make GCS files **publicly readable by URL** but the bucket **not listable**. Includes a Cloud Function (Gen 2, Python) that auto-applies public-read ACL on every new upload. | GCS, Cloud Functions Gen 2, Eventarc | stable |
+| [GCS bucket: public file access & security](cloud/gcp/gcs-bucket-public-access-and-security-guide.md) | Make GCS files **publicly readable by URL** but the bucket **not listable**. Includes a Cloud Function (Gen 2, Python) that auto-applies public-read ACL on every new upload. | GCS, Cloud Functions Gen 2, Eventarc | stable |
 
 ### Kubernetes
 
 | Note | What you'll set up | Cluster | Status |
 | --- | --- | --- | --- |
-| [GKE RBAC — DevOps user access setup](kubernetes/gke-rbac-devops-user-access-guide.md) | Custom `ClusterRole` + `ClusterRoleBinding` granting operational (port-forward, log view, exec, restart, Helm uninstall) access **without** giving full admin or app-creation rights. Includes a complete RBAC parameter reference for extending. | GKE | stable |
-| [GKE + AccuKnox CNAPP — integration & onboarding](kubernetes/gke-accuknox-cnapp-integration-guide.md) | End-to-end onboarding of a GKE cluster to AccuKnox CNAPP — IAM, custom role, VPC egress firewall (the #1 failure point), KubeArmor + agents via Helm, multi-cluster, GAR image scanning, real troubleshooting. | GKE | stable |
+| [GKE RBAC: DevOps user access setup](kubernetes/gke-rbac-devops-user-access-guide.md) | Custom `ClusterRole` + `ClusterRoleBinding` granting operational (port-forward, log view, exec, restart, Helm uninstall) access **without** giving full admin or app-creation rights. Includes a complete RBAC parameter reference for extending. | GKE | stable |
+| [GKE + AccuKnox CNAPP: integration & onboarding](kubernetes/gke-accuknox-cnapp-integration-guide.md) | End-to-end onboarding of a GKE cluster to AccuKnox CNAPP: IAM, custom role, VPC egress firewall (the #1 failure point), KubeArmor + agents via Helm, multi-cluster, GAR image scanning, real troubleshooting. | GKE | stable |
 
 ### Linux
 
 | Note | What you'll set up | Tested on | Status |
 | --- | --- | --- | --- |
-| [Ubuntu VM — XFCE desktop + RDP access from CLI](linux/ubuntu-vm-xfce-rdp-setup-guide.md) | Headless Ubuntu VM → full XFCE desktop accessible via RDP (Windows App / Microsoft Remote Desktop). Cloud-agnostic: works on local VMs, GCP, AWS, and Azure. | Ubuntu 26.04 | stable |
+| [Ubuntu VM: XFCE desktop + RDP access from CLI](linux/ubuntu-vm-xfce-rdp-setup-guide.md) | Headless Ubuntu VM → full XFCE desktop accessible via RDP (Windows App / Microsoft Remote Desktop). Cloud-agnostic: works on local VMs, GCP, AWS, and Azure. | Ubuntu 26.04 | stable |
 
 ### macOS
 
-| Tool | What you get | Run | Status |
+| Tool / Guide | What you get | Run / Open | Status |
 | --- | --- | --- | --- |
-| [Mac System Info + Live Monitor](mac/mac-info/) | Full macOS snapshot — battery health, charging & power flow, CPU, memory, disk, network, thermals, top processes. Includes a live real-time dashboard (like `htop`) that refreshes every 3 s. | `bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh)` | stable |
+| [Mac System Info + Live Monitor](mac/mac-info/) | Full macOS snapshot: battery health, charging & power flow, CPU, memory, disk, network, thermals, top processes. Includes a live real-time dashboard (like `htop`) that refreshes every 3 s. | `bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh)` | stable |
+| [Secure API Credentials with Keychain](mac/keychain-credentials/) | Complete guide to storing AWS, MongoDB, and Cloudflare credentials in macOS Keychain instead of `.env` files. Includes `load-secrets.sh`, AI assistant rules, 30-point security checklist, and Git best practices. | [Open guide](mac/keychain-credentials/) | stable |
 
 ### Tools
 
 | Note | What you'll learn | Audience | Status |
 | --- | --- | --- | --- |
-| [Cursor — Rules setup & reference guide](tools/cursor/rules-setup-guide.md) | What Cursor Rules are, global vs project rules, file format, plus 6 drop-in `.mdc` rules (commit format, K8s, Docker, shell, security, GCP CLI). Files in [`tools/cursor/rules/`](tools/cursor/rules/). | Cursor IDE users | stable |
-| [GitHub — Org-owned GitHub App for CI/CD](tools/github/org-github-app-for-cicd-setup-guide.md) | Replace personal PATs / "service-user accounts" with an org-owned GitHub App that mints short-lived installation tokens. Includes the migration playbook for centralized reusable workflows + bulk-update of downstream app repos. | Platform / DevOps engineers, GitHub org admins | stable |
+| [Cursor: Rules setup & reference guide](tools/cursor/rules-setup-guide.md) | What Cursor Rules are, global vs project rules, file format, plus 6 drop-in `.mdc` rules (commit format, K8s, Docker, shell, security, GCP CLI). Files in [`tools/cursor/rules/`](tools/cursor/rules/). | Cursor IDE users | stable |
+| [GitHub: Org-owned GitHub App for CI/CD](tools/github/org-github-app-for-cicd-setup-guide.md) | Replace personal PATs / "service-user accounts" with an org-owned GitHub App that mints short-lived installation tokens. Includes the migration playbook for centralized reusable workflows + bulk-update of downstream app repos. | Platform / DevOps engineers, GitHub org admins | stable |
 
 *More notes will be added here as they're published. The order inside each section is alphabetical.*
 
@@ -138,7 +139,8 @@ tech-notes/
 │
 ├── mac/                               ← macOS scripts and utilities
 │   ├── README.md
-│   └── mac-info/                      ← battery, power, CPU, memory, disk, network — static + live monitor
+│   ├── mac-info/                      ← battery, power, CPU, memory, disk, network: static + live monitor
+│   └── keychain-credentials/          ← secure API credential management using Apple Keychain
 │
 └── tools/                             ← IDE rules, CLI configs, dev environment setups
     ├── README.md
@@ -157,15 +159,15 @@ tech-notes/
         └── org-github-app-for-cicd-setup-guide.md
 ```
 
-> Folders are added as content lands — empty folders aren't tracked. Future planned folders include `cloud/azure/`, `docker/`, `networking/`, `snippets/`.
+> Folders are added as content lands, empty folders aren't tracked. Future planned folders include `cloud/azure/`, `docker/`, `networking/`, `snippets/`.
 
 ---
 
 ## How to use
 
 1. **Browse the [catalog](#note-catalog) above** or open the folder you need.
-2. **Open the `.md` file** — every note starts with a one-line purpose, prerequisites, and target OS.
-3. **Copy-paste commands** — they're written to run as-is. Replace anything in `<angle brackets>` with your own values.
+2. **Open the `.md` file**: every note starts with a one-line purpose, prerequisites, and target OS.
+3. **Copy-paste commands**: they're written to run as-is. Replace anything in `<angle brackets>` with your own values.
 4. **Hit a snag?** Each note has a *Troubleshooting* section at the bottom for the failure modes I actually ran into.
 
 ### Assumptions every note makes
@@ -185,7 +187,7 @@ The bar is low: **a note is a real conversation in plain markdown**. The structu
 | Filenames | lowercase `kebab-case`, descriptive (`ubuntu-vm-xfce-rdp-setup-guide.md`) |
 | Top of every note | one-line purpose · target OS / version · prerequisites |
 | Code blocks | all commands fenced; no smart quotes, no line numbers, no `$` prompt inside the block |
-| Placeholders | wrapped in angle brackets — `<your-username>`, `<vm-public-ip>`, `<project-id>` — never real values |
+| Placeholders | wrapped in angle brackets: `<your-username>`, `<vm-public-ip>`, `<project-id>`, never real values |
 | Cloud-agnostic | if a step differs by provider, list them side-by-side (GCP / AWS / Azure) |
 | One scenario per file | don't combine "install + monitor + scale" into one mega-note; split it |
 | Date inside the note | a small "_tested on YYYY-MM-DD on Ubuntu X.Y_" line near the top |
@@ -194,11 +196,11 @@ The bar is low: **a note is a real conversation in plain markdown**. The structu
 
 ## Adding a new note
 
-> **Read [AGENTS.md](AGENTS.md) first.** It is the single source of truth for the workflow — followed by humans **and** by AI agents (Cursor, Claude Code, etc.) when they help add content.
+> **Read [AGENTS.md](AGENTS.md) first.** It is the single source of truth for the workflow, followed by humans **and** by AI agents (Cursor, Claude Code, etc.) when they help add content.
 
 The short version:
 
-1. Pick the right folder (or create one if it's a new topic — see the layout above).
+1. Pick the right folder (or create one if it's a new topic, see the layout above).
 2. Name the file in `kebab-case` describing the *outcome* (`vpn-wireguard-server-setup.md`, not `wg-stuff.md`).
 3. Use the note template at the top of `AGENTS.md`.
 4. Sanitize: replace every real IP, email, project ID, and username with `<placeholders>`.
@@ -214,7 +216,7 @@ A short version for external contributors lives in [CONTRIBUTING.md](CONTRIBUTIN
 
 | Doc | What's in it |
 | --- | --- |
-| [README.md](README.md) | This file — entry point, catalog, conventions |
+| [README.md](README.md) | This file, entry point, catalog, conventions |
 | [AGENTS.md](AGENTS.md) | Full workflow for adding notes, sanitization rules, secret-scan command, pre-push checklist (used by humans **and** AI agents) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Short version for external human contributors |
 | [SECURITY.md](SECURITY.md) | How to report a leaked secret or sensitive value found in this repo |
@@ -225,9 +227,9 @@ A short version for external contributors lives in [CONTRIBUTING.md](CONTRIBUTIN
 ## Security
 
 Found a sensitive value (real IP, email, key, credential) accidentally committed?
-**Please don't open a public issue** — follow the responsible-disclosure process in [SECURITY.md](SECURITY.md).
+**Please don't open a public issue**: follow the responsible-disclosure process in [SECURITY.md](SECURITY.md).
 
-The repo also has a sanitization workflow baked into [AGENTS.md](AGENTS.md) so this shouldn't happen at commit time, but mistakes happen — quiet disclosure helps me clean up history without exposing the value further.
+The repo also has a sanitization workflow baked into [AGENTS.md](AGENTS.md) so this shouldn't happen at commit time, but mistakes happen, quiet disclosure helps me clean up history without exposing the value further.
 
 ---
 
