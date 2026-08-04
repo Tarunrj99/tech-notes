@@ -20,16 +20,16 @@
 11. [Git Best Practices](#git-best-practices)
 12. [Security Best Practices Checklist](#security-best-practices-checklist)
 13. [Troubleshooting](#troubleshooting)
-14. [Appendix — Quick Reference Cheat Sheet](#appendix--quick-reference-cheat-sheet)
+14. [Appendix: Quick Reference Cheat Sheet](#appendix--quick-reference-cheat-sheet)
 
 ---
 
-## Quick Start — Step-by-Step Setup
+## Quick Start: Step-by-Step Setup
 
 > New here? Follow these steps in order. Each step links to the full explanation.
 > You can skip services you don't use.
 
-### Phase 1 — One-time machine setup (do this first, once)
+### Phase 1: One-time machine setup (do this first, once)
 
 | Step | What to do | Jump to |
 |------|-----------|---------|
@@ -40,7 +40,7 @@
 
 ---
 
-### Phase 2 — Store your credentials (one per service)
+### Phase 2: Store your credentials (one per service)
 
 Pick only the services you use:
 
@@ -52,12 +52,12 @@ Pick only the services you use:
 
 ---
 
-### Phase 3 — Use credentials in your project
+### Phase 3: Use credentials in your project
 
 | Step | What to do | Jump to |
 |------|-----------|---------|
 | **5** | Run `source ~/.config/secrets/load-secrets.sh` at the start of any session | [Loading All Secrets at Once](#loading-all-secrets-at-once) |
-| **6** | Read env vars in your code — Node.js, Python, Go, etc. | [Using Credentials in Applications](#using-credentials-in-applications) |
+| **6** | Read env vars in your code, Node.js, Python, Go, etc. | [Using Credentials in Applications](#using-credentials-in-applications) |
 | **7** | Add `.gitignore` rules so secrets can never be committed | [Git Best Practices](#git-best-practices) |
 | **8** | Paste the AI rules into Cursor or Claude so they never ask for secrets | [AI Assistant Security Rules](#ai-assistant-security-rules) |
 
@@ -75,7 +75,7 @@ Pick only the services you use:
 | Create one script to load everything | [load-secrets.sh](#load-secretssh) |
 | See all naming conventions at a glance | [Recommended Naming Convention](#recommended-naming-convention) |
 | Fix a Keychain error | [Troubleshooting](#troubleshooting) |
-| See all commands in one place | [Appendix — Cheat Sheet](#appendix--quick-reference-cheat-sheet) |
+| See all commands in one place | [Appendix: Cheat Sheet](#appendix--quick-reference-cheat-sheet) |
 
 ---
 
@@ -93,7 +93,7 @@ Keychain supports three types of entries relevant to developer workflows:
 
 | Type | Use case |
 |---|---|
-| **Generic password** | API tokens, passwords, secrets — the type used in this guide |
+| **Generic password** | API tokens, passwords, secrets (the type used in this guide |
 | **Internet password** | Browser-saved website credentials |
 | **Certificate/Key** | TLS certificates, SSH keys, code-signing identities |
 
@@ -107,8 +107,8 @@ This guide focuses entirely on **generic passwords** managed via the `security` 
 
 | Risk | `.env` file | Keychain |
 |---|---|---|
-| Accidentally committed to Git | Very common | Not possible — lives outside the repo |
-| Readable by any process as plain text | Yes | No — requires explicit macOS permission grant |
+| Accidentally committed to Git | Very common | Not possible (lives outside the repo |
+| Readable by any process as plain text | Yes | No (requires explicit macOS permission grant |
 | Persists across reboots unencrypted | Yes (if disk is unencrypted) | Encrypted at rest, always |
 | Visible in text editors, file browsers | Yes | No |
 | Included in zip/tar backups carelessly | Yes | No |
@@ -119,7 +119,7 @@ plugin, any npm package you run can silently read them. Keychain requires the ca
 process to be explicitly granted access and logs every access attempt.
 
 > **Warning:** A `.env` file on disk is readable by every process running as your user
-> account — including malicious scripts in `node_modules`, Python packages, or shell
+> account, including malicious scripts in `node_modules`, Python packages, or shell
 > scripts you run from the internet.
 
 ---
@@ -136,7 +136,7 @@ export AWS_SECRET_ACCESS_KEY="AKIAIOSFODNN7EXAMPLE..."
 This is dangerous for several reasons:
 
 - Shell profiles are **plain text files** stored unencrypted on disk
-- They are often backed up to iCloud, Time Machine, or Dropbox — all of which sync to
+- They are often backed up to iCloud, Time Machine, or Dropbox, all of which sync to
   remote servers
 - Every shell session loads them, meaning the secret is in memory constantly, even when
   you are not using it
@@ -260,10 +260,10 @@ unset token
 
 | Argument | Meaning |
 |---|---|
-| `-s "service-name"` | The **service** label — use a short, consistent, lowercase slug (e.g. `aws-access-key`) |
-| `-a "ENV_VARIABLE_NAME"` | The **account** label — use the exact environment variable name (e.g. `AWS_ACCESS_KEY_ID`) |
-| `-w "$token"` | The **secret value** — passed as a variable, never typed directly in the command |
-| `-U` | **Update** — if an entry with the same `-s` and `-a` already exists, overwrite it silently instead of erroring |
+| `-s "service-name"` | The **service** label (use a short, consistent, lowercase slug (e.g. `aws-access-key`) |
+| `-a "ENV_VARIABLE_NAME"` | The **account** label (use the exact environment variable name (e.g. `AWS_ACCESS_KEY_ID`) |
+| `-w "$token"` | The **secret value** (passed as a variable, never typed directly in the command |
+| `-U` | **Update** (if an entry with the same `-s` and `-a` already exists, overwrite it silently instead of erroring |
 
 **Why use `read -s` instead of typing the value directly?**
 
@@ -286,8 +286,8 @@ security find-generic-password \
   -a "ENV_VARIABLE_NAME"
 ```
 
-This returns metadata about the entry — the service name, account, creation date, and
-modification date — **without** showing the secret value. Use this to confirm an entry
+This returns metadata about the entry, the service name, account, creation date, and
+modification date. **without** showing the secret value. Use this to confirm an entry
 was saved correctly before trying to use it.
 
 Example output:
@@ -336,7 +336,7 @@ export CLOUDFLARE_API_TOKEN="$(
 
 **Why this approach is preferred:**
 
-- The secret value is never stored in a file — it lives only in memory for the duration
+- The secret value is never stored in a file, it lives only in memory for the duration
   of the shell session
 - The command substitution `$(...)` runs in a subshell; the raw value is returned and
   immediately assigned to the environment variable
@@ -356,7 +356,7 @@ security delete-generic-password \
   -a "ENV_VARIABLE_NAME"
 ```
 
-This permanently removes the entry from Keychain. Use this when rotating credentials —
+This permanently removes the entry from Keychain. Use this when rotating credentials:
 delete the old entry first, then add the new one (or use `-U` to update in place).
 
 ---
@@ -404,17 +404,17 @@ permissions required.
 
 ### Creating a Least-Privilege IAM User for Development
 
-#### Step 1 — Create an AWS Account
+#### Step 1: Create an AWS Account
 
 Go to [aws.amazon.com](https://aws.amazon.com) and create an account. Enable MFA on the
 root account as the first action after signup.
 
-#### Step 2 — Open IAM Console
+#### Step 2: Open IAM Console
 
 Sign in to the AWS Management Console. Navigate to **IAM** (Identity and Access
 Management).
 
-#### Step 3 — Create an IAM Group with Scoped Permissions
+#### Step 3: Create an IAM Group with Scoped Permissions
 
 Groups make it easy to manage permissions for multiple users and to audit what any user
 can do.
@@ -437,7 +437,7 @@ Examples of least-privilege policies:
 > JSON editor that grants access only to the specific actions and specific resource ARNs
 > your application uses. Wildcard `"Resource": "*"` should be avoided wherever possible.
 
-#### Step 4 — Create an IAM User
+#### Step 4: Create an IAM User
 
 1. IAM → **Users** → **Create user**
 2. Name it clearly: `tarun-dev`, `project-name-ci`, `local-dev`
@@ -446,19 +446,19 @@ Examples of least-privilege policies:
 5. Add the user to the group you created in Step 3
 6. Finish creation
 
-#### Step 5 — Create an Access Key
+#### Step 5: Create an Access Key
 
 1. Open the user → **Security credentials** tab
 2. Under **Access keys** → **Create access key**
 3. Choose **"Local code"** as the use case
-4. **Download the CSV or copy both values immediately** — the secret key is shown only once
+4. **Download the CSV or copy both values immediately**, the secret key is shown only once
 
 You will now have two values:
 
 | Variable | Description |
 |---|---|
-| `AWS_ACCESS_KEY_ID` | The key identifier — starts with `AKIA` for long-term keys |
-| `AWS_SECRET_ACCESS_KEY` | The secret — a 40-character string. Never shown again after creation |
+| `AWS_ACCESS_KEY_ID` | The key identifier (starts with `AKIA` for long-term keys |
+| `AWS_SECRET_ACCESS_KEY` | The secret (a 40-character string. Never shown again after creation |
 
 ---
 
@@ -607,17 +607,17 @@ Keychain on all machines.
 
 ### Creating an Atlas Account and Cluster
 
-#### Step 1 — Create an Atlas Account
+#### Step 1: Create an Atlas Account
 
 Go to [cloud.mongodb.com](https://cloud.mongodb.com) and sign up.
 
-#### Step 2 — Create an Organization and Project
+#### Step 2: Create an Organization and Project
 
 After signing in, create an **Organization** (your company or personal account) and a
 **Project** within it. Projects isolate clusters, users, and network settings from each
 other.
 
-#### Step 3 — Create a Cluster
+#### Step 3: Create a Cluster
 
 Inside your project, click **"Build a Cluster"**. For development:
 
@@ -625,12 +625,12 @@ Inside your project, click **"Build a Cluster"**. For development:
 - Select a cloud provider (AWS, GCP, or Azure) and region close to your application
 - Give the cluster a meaningful name (e.g. `dev-cluster`, `prod-cluster`)
 
-#### Step 4 — Create a Database User
+#### Step 4: Create a Database User
 
 Go to **Database Access** → **Add New Database User**.
 
 - Choose **Password** authentication (not X.509 for most use cases)
-- Use a strong randomly generated password — never a password you reuse elsewhere
+- Use a strong randomly generated password, never a password you reuse elsewhere
 - Set the role to the minimum required:
 
 | Role | Use case |
@@ -642,16 +642,16 @@ Go to **Database Access** → **Add New Database User**.
 > **Best practice:** Create one database user per application or per environment
 > (dev, staging, production). This limits blast radius if one set of credentials is leaked.
 
-#### Step 5 — Configure IP Access List
+#### Step 5: Configure IP Access List
 
 Under **Network Access** → **IP Access List**, add the IP addresses that should be allowed
 to connect.
 
 - For local development, add your current IP: `0.0.0.0/0` is convenient but means
-  anyone with valid credentials can connect from anywhere — avoid it in production
+  anyone with valid credentials can connect from anywhere, avoid it in production
 - For production, add only the specific IP ranges of your application servers or VPN
 
-#### Step 6 — Get the Connection String
+#### Step 6: Get the Connection String
 
 In the Atlas dashboard, click **Connect** → **Connect your application** → choose your
 driver and version. Copy the connection string. It looks like this:
@@ -775,8 +775,8 @@ Cloudflare provides two types of programmatic access:
 
 | Type | Scope | Risk |
 |---|---|---|
-| **Global API Key** | Full account access — equivalent to your password | Extremely high — one leak means full account compromise |
-| **API Tokens** | Scoped to specific zones, specific permissions, and optionally specific IPs and time windows | Low — a leaked token can only do what it was explicitly granted |
+| **Global API Key** | Full account access (equivalent to your password | Extremely high (one leak means full account compromise |
+| **API Tokens** | Scoped to specific zones, specific permissions, and optionally specific IPs and time windows | Low (a leaked token can only do what it was explicitly granted |
 
 **Always use API Tokens.** The Global API Key exists for legacy reasons and should never
 be used in scripts, CI, or applications.
@@ -795,7 +795,7 @@ be used in scripts, CI, or applications.
 | **Token name** | Something descriptive: `dns-automation`, `workers-deploy`, `local-dev` |
 | **Permissions** | Add only what is needed (see examples below) |
 | **Zone Resources** | Choose specific zones or "All zones" only if truly required |
-| **IP Address Filtering** | Optional but recommended — restrict to your office/home IP |
+| **IP Address Filtering** | Optional but recommended (restrict to your office/home IP |
 | **TTL** | Set an expiry date for tokens used in CI or temporary access |
 
 **DNS management permissions:**
@@ -944,7 +944,7 @@ confusion when reading scripts or setting up a new machine.
 
 - Keychain service name (`-s`): always lowercase, hyphen-separated
 - Keychain account name (`-a`): always the exact environment variable name in uppercase
-  with underscores — this makes it trivially obvious which env var maps to which entry
+  with underscores, this makes it trivially obvious which env var maps to which entry
 - Environment variable name: follow the official SDK convention for the service
 
 ---
@@ -1010,7 +1010,7 @@ echo "✅  Secrets loaded from Keychain"
 | `set -euo pipefail` | Exit on error (`-e`), treat unset variables as errors (`-u`), propagate pipe failures (`-o pipefail`) |
 | `_load()` function | Generic helper that reads one Keychain entry and exports it as an environment variable |
 | `2>/dev/null \|\| true` | Silences the error if the entry doesn't exist, letting the missing-value check handle it gracefully |
-| `-z "$value"` check | If the value is empty (entry not found), print a warning to stderr and skip — don't hard-fail the entire script |
+| `-z "$value"` check | If the value is empty (entry not found), print a warning to stderr and skip (don't hard-fail the entire script |
 | `export "$env_var"="$value"` | Makes the variable available to all child processes (your application, CLI tools, etc.) |
 | `echo "✅  Secrets loaded"` | Confirms the script ran without showing any values |
 
@@ -1200,7 +1200,7 @@ The following rules are designed to be pasted directly into **Cursor Rules**,
 
 ## Git Best Practices
 
-### `.gitignore` — Files That Must Never Be Committed
+### `.gitignore`: Files That Must Never Be Committed
 
 Add these entries to every project's `.gitignore` file:
 
@@ -1284,20 +1284,20 @@ remote repository's history.
 
 Act **immediately**. Every minute the secret is in a public repository increases the risk.
 
-**Step 1 — Revoke the secret now**
+**Step 1: Revoke the secret now**
 
 Go to the service (AWS IAM, Cloudflare, MongoDB Atlas, etc.) and revoke or rotate the
 compromised credential before doing anything else with Git. A secret that is revoked
 cannot be exploited even if it is still visible in history.
 
-**Step 2 — Check for unauthorized use**
+**Step 2: Check for unauthorized use**
 
 - AWS: CloudTrail → Event history
 - Cloudflare: Audit Log in the dashboard
 - MongoDB Atlas: Activity Feed in the project
 - GitHub: Repository → Insights → Network (for unexpected forks)
 
-**Step 3 — Remove from Git history**
+**Step 3: Remove from Git history**
 
 Use `git filter-branch` or the faster `git-filter-repo` tool:
 
@@ -1315,11 +1315,11 @@ git push origin --force --all
 > **Warning:** `git push --force` rewrites remote history. All collaborators must
 > re-clone or hard-reset their local copies. Co-ordinate with your team before doing this.
 
-**Step 4 — Generate a new credential**
+**Step 4: Generate a new credential**
 
 Create a new key/token after revoking the old one. Store it in Keychain. Never in a file.
 
-**Step 5 — Review and prevent recurrence**
+**Step 5: Review and prevent recurrence**
 
 Add the file type to `.gitignore`. Consider enabling GitHub Push Protection.
 
@@ -1329,7 +1329,7 @@ Add the file type to `.gitignore`. Consider enabling GitHub Push Protection.
 
 ### Keychain and Local Machine
 
-- [ ] All secrets stored in macOS Keychain — zero secrets in plain text files
+- [ ] All secrets stored in macOS Keychain, zero secrets in plain text files
 - [ ] `load-secrets.sh` lives outside any Git repository (`~/.config/secrets/`)
 - [ ] `load-secrets.sh` has permissions `600` (`chmod 600 ~/.config/secrets/load-secrets.sh`)
 - [ ] No secrets in `.zshrc`, `.bashrc`, `.bash_profile`, or any shell config file
@@ -1364,7 +1364,7 @@ Add the file type to `.gitignore`. Consider enabling GitHub Push Protection.
 
 ### Cloudflare
 
-- [ ] Global API Key is not used anywhere — only scoped API Tokens
+- [ ] Global API Key is not used anywhere, only scoped API Tokens
 - [ ] Each API Token scoped to the minimum zones and permissions required
 - [ ] IP address filtering configured on tokens where possible
 - [ ] TTL set on tokens used in CI pipelines
@@ -1389,7 +1389,7 @@ Add the file type to `.gitignore`. Consider enabling GitHub Push Protection.
 - [ ] No credentials in error messages returned to clients
 - [ ] No credentials in URLs (query strings, path parameters)
 - [ ] Dependencies reviewed for known vulnerabilities (`npm audit`, `pip-audit`, etc.)
-- [ ] SDKs are configured to read from environment — not from hardcoded values
+- [ ] SDKs are configured to read from environment, not from hardcoded values
 
 ---
 
@@ -1482,7 +1482,7 @@ a colon (`:`) in the service name which some versions of macOS handle inconsiste
 
 ---
 
-### Cannot Add Entry — "The specified item already exists"
+### Cannot Add Entry: "The specified item already exists"
 
 **Cause:** An entry with the same `-s` and `-a` already exists and `-U` was not used.
 
@@ -1515,7 +1515,7 @@ password (can happen after a password reset).
 
 ---
 
-## Appendix — Quick Reference Cheat Sheet
+## Appendix: Quick Reference Cheat Sheet
 
 ### Keychain Commands
 
@@ -1539,7 +1539,7 @@ security delete-generic-password -s "SERVICE" -a "ACCOUNT"
 
 ---
 
-### Credential Entries — Standard Names
+### Credential Entries: Standard Names
 
 ```bash
 # AWS
@@ -1571,9 +1571,9 @@ security add-generic-password -s "cloudflare-account-id" -a "CLOUDFLARE_ACCOUNT_
 | Cloudflare API Token Permissions | [developers.cloudflare.com/fundamentals/api/reference/permissions](https://developers.cloudflare.com/fundamentals/api/reference/permissions/) |
 | GitHub Secret Scanning | [docs.github.com/en/code-security/secret-scanning](https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning) |
 | GitHub Push Protection | [docs.github.com/en/code-security/secret-scanning/push-protection-for-repositories-and-organizations](https://docs.github.com/en/code-security/secret-scanning/push-protection-for-repositories-and-organizations) |
-| `gitleaks` — Git secret scanner | [github.com/gitleaks/gitleaks](https://github.com/gitleaks/gitleaks) |
-| `detect-secrets` — pre-commit hook | [github.com/Yelp/detect-secrets](https://github.com/Yelp/detect-secrets) |
-| `git-filter-repo` — history rewriting | [github.com/newren/git-filter-repo](https://github.com/newren/git-filter-repo) |
+| `gitleaks`, Git secret scanner | [github.com/gitleaks/gitleaks](https://github.com/gitleaks/gitleaks) |
+| `detect-secrets` (pre-commit hook | [github.com/Yelp/detect-secrets](https://github.com/Yelp/detect-secrets) |
+| `git-filter-repo` (history rewriting | [github.com/newren/git-filter-repo](https://github.com/newren/git-filter-repo) |
 
 ---
 
