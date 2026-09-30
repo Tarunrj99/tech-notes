@@ -1,18 +1,25 @@
-# Accessing a Mac Remotely — Local Network & Anywhere via Tailscale
+# Accessing a Mac Remotely: Local Network & Anywhere via Tailscale
 
-A step-by-step guide to viewing and controlling one Mac from another, whether you're on the same Wi-Fi or on the other side of the world.
+> A step-by-step guide to viewing and controlling one Mac from another, whether you're on the same Wi-Fi or on the other side of the world.
+
+| Item | Value |
+|---|---|
+| OS / target | macOS Sonoma / Sequoia (host and client) |
+| Tested on | Two MacBooks, built-in Screen Sharing + Tailscale |
+| Time to complete | ~20 min |
+| Difficulty | beginner |
 
 ---
 
 ## Prerequisites
 
-- **Mac 1 (Host)** — the machine you want to connect *to* (must stay on and lid open)
-- **Mac 2 (Client)** — the machine you connect *from*
+- **Mac 1 (Host)**: the machine you want to connect *to* (must stay on and lid open)
+- **Mac 2 (Client)**: the machine you connect *from*
 - Both running macOS (tested on macOS Sonoma / Sequoia)
 
 ---
 
-## Part 1 — Configure Mac 1 (Host) — One-Time Setup
+## Part 1: Configure Mac 1 (Host), One-Time Setup
 
 These settings only need to be done once on the machine you want to access remotely.
 
@@ -47,18 +54,18 @@ These settings only need to be done once on the machine you want to access remot
 
 Without these settings, Mac 1 will sleep when unattended and drop all connections.
 
-**Display timeout** — System Settings → Lock Screen:
+**Display timeout** (System Settings → Lock Screen):
 - Turn display off on battery when inactive → **3 hours**
 - Turn display off on power adapter when inactive → **3 hours**
 
 > The screen will go dark to protect the panel, but the system process stays awake.
 
-**Sleep prevention** — System Settings → Battery → Options:
+**Sleep prevention** (System Settings → Battery → Options):
 - Prevent automatic sleeping on power adapter when display is off → **ON**
 - Wake for network access → **Always**
-- Optimized Battery Charging → **ON** (leave this active — caps charge at 80% while perpetually plugged in, protecting long-term battery health; the Mac stays fully functional for remote access at 80%)
+- Optimized Battery Charging → **ON** (leave this active, it caps charge at 80% while perpetually plugged in, protecting long-term battery health; the Mac stays fully functional for remote access at 80%)
 
-> **Important — Lid must stay open.** Closing the lid triggers a hardware sleep sensor that shuts down the Wi-Fi card and drops all connections, regardless of any software setting. The screen will lock itself automatically; the lid must physically remain open.
+> **Important: Lid must stay open.** Closing the lid triggers a hardware sleep sensor that shuts down the Wi-Fi card and drops all connections, regardless of any software setting. The screen will lock itself automatically; the lid must physically remain open.
 
 #### Alternative: `caffeinate` (No Settings Change Required)
 
@@ -69,14 +76,14 @@ If you prefer not to modify system settings permanently, macOS has a built-in te
    ```bash
    caffeinate -s
    ```
-3. Leave the Terminal window open — the system cannot enter deep sleep while it is running
+3. Leave the Terminal window open: the system cannot enter deep sleep while it is running
 4. Close the window when you no longer need the Mac to stay awake
 
 > `-s` keeps the system awake only while on AC power. This is a lightweight, reversible alternative to the Battery settings above.
 
 ---
 
-## Part 2 — Connect Over Local Wi-Fi (Same Network)
+## Part 2: Connect Over Local Wi-Fi (Same Network)
 
 No extra software needed when both Macs are on the same Wi-Fi router.
 
@@ -89,11 +96,11 @@ No extra software needed when both Macs are on the same Wi-Fi router.
 3. Click **Connect**
 4. Enter credentials:
    - **Username:** output of `whoami` on Mac 1
-   - **Password:** Mac 1's login password — or the VNC password set in Part 1
+   - **Password:** Mac 1's login password, or the VNC password set in Part 1
 
 ---
 
-## Part 3 — Connect from Anywhere via Tailscale
+## Part 3: Connect from Anywhere via Tailscale
 
 Use this when both Macs are on different networks (travelling, different offices, mobile hotspot). Tailscale creates a private encrypted tunnel between devices without any router or firewall configuration.
 
@@ -120,9 +127,9 @@ Use this when both Macs are on different networks (travelling, different offices
 | Connect automatically on Ethernet | Always |
 | Detect MagicDNS hostnames | ON |
 
-> **Why Detect MagicDNS hostnames?** With this on, Tailscale auto-connects the moment any app (including Screen Sharing) tries to reach a `.ts.net` address — even if Tailscale was not already active. Without it, you would need to open Tailscale manually before Screen Sharing can find the host.
+> **Why Detect MagicDNS hostnames?** With this on, Tailscale auto-connects the moment any app (including Screen Sharing) tries to reach a `.ts.net` address, even if Tailscale was not already active. Without it, you would need to open Tailscale manually before Screen Sharing can find the host.
 
-With all of the above set, the tunnel comes up automatically on every boot and reconnects on every network change — no manual action needed.
+With all of the above set, the tunnel comes up automatically on every boot and reconnects on every network change. No manual action is needed.
 
 ---
 
@@ -140,7 +147,7 @@ Only needed if Mac 1 and Mac 2 are signed into **different** Tailscale accounts.
 ### 3.3 Connect Remotely
 
 1. On **Mac 2**, open **Screen Sharing**
-2. Enter Mac 1's Tailscale address — either format works:
+2. Enter Mac 1's Tailscale address (either format works):
    - **FQDN:** `hostname.tailnet-name.ts.net` (shown in the Tailscale admin panel)
    - **Tailscale IP:** `100.x.x.x` (visible in the Tailscale menu bar app on Mac 1)
 3. Click **Connect**
@@ -154,14 +161,14 @@ You now have full screen control from anywhere in the world.
 
 ### Auto Login After a Restart
 
-For Mac 1 to come back online automatically after a restart — without someone physically typing a password — enable Auto Login:
+For Mac 1 to come back online automatically after a restart, without someone physically typing a password, enable Auto Login:
 
 **System Settings → Users & Groups → Automatically log in as** → select your user
 
 However, Auto Login may not be available on your machine for one or both of the following reasons:
 
 **1. FileVault is enabled**
-FileVault encrypts the entire disk. Apple disables Auto Login when FileVault is on because the disk encryption key must be unlocked by a user password at every boot — this is a security requirement and cannot be bypassed.
+FileVault encrypts the entire disk. Apple disables Auto Login when FileVault is on because the disk encryption key must be unlocked by a user password at every boot. This is a security requirement and cannot be bypassed.
 To check: System Settings → Privacy & Security → FileVault
 
 **2. A device management profile is restricting it**
@@ -177,7 +184,7 @@ If Auto Login is blocked, the best approach is to keep the system running contin
 
 **1. Prevent sleep**
 
-Use **Amphetamine** (free, Mac App Store) — runs silently in the menu bar, survives reboots, and can keep the system awake indefinitely or on a schedule. More reliable than leaving a terminal window open.
+Use **Amphetamine** (free, Mac App Store): it runs silently in the menu bar, survives reboots, and can keep the system awake indefinitely or on a schedule. More reliable than leaving a terminal window open.
 
 Or use the built-in terminal command (see Part 1 Section 2 for details):
 ```bash
@@ -200,7 +207,7 @@ With all three in place, Mac 1 can run continuously for weeks without a restart 
 
 ---
 
-## Optional — Tailscale: Exit Node
+## Optional: Tailscale Exit Node
 
 Not required for screen sharing. An Exit Node routes **all internet traffic** from Mac 2 through Mac 1, turning it into a personal VPN gateway.
 
@@ -215,7 +222,7 @@ Not required for screen sharing. An Exit Node routes **all internet traffic** fr
 
 > Enable **Allow local network access** alongside it if you also want Mac 2 to reach devices on Mac 1's local network (printers, NAS drives, etc.) while routing through the exit node.
 
-**For screen sharing only:** Leave Exit Node OFF — it is not needed.
+**For screen sharing only:** Leave Exit Node OFF. It is not needed.
 
 ---
 
@@ -223,7 +230,7 @@ Not required for screen sharing. An Exit Node routes **all internet traffic** fr
 
 | Scenario | Address to enter in Screen Sharing | Extra software |
 |---|---|---|
-| Same Wi-Fi network | `your-mac-hostname.local` or `192.168.x.x` | None — built-in Screen Sharing |
+| Same Wi-Fi network | `your-mac-hostname.local` or `192.168.x.x` | None (built-in Screen Sharing) |
 | Different networks (anywhere) | `100.x.x.x` or `hostname.tailnet-name.ts.net` | Tailscale on both Macs |
 
 ---
@@ -237,3 +244,7 @@ Not required for screen sharing. An Exit Node routes **all internet traffic** fr
 | **Tailscale auto-reconnects** | VPN On Demand ensures the tunnel reconnects automatically after any network change or wake from sleep |
 | **VNC password vs login** | The VNC password is quicker for screen-only access; use system login credentials for full access including SSH |
 | **After a restart** | If Auto Login is blocked (FileVault or MDM profile), remote access resumes only after someone types the password at the login screen |
+
+---
+
+_Tested: 2026-09-30_

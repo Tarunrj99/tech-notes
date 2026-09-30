@@ -1,6 +1,6 @@
 # Mac Tools
 
-macOS-specific scripts and utilities — runnable with a single `bash <(curl ...)` command that auto-installs any optional dependencies.
+macOS-specific scripts and utilities, runnable with a single `bash <(curl ...)` command that auto-installs any optional dependencies.
 
 [Back to repo root](../README.md)
 
@@ -16,7 +16,7 @@ macOS-specific scripts and utilities — runnable with a single `bash <(curl ...
 
 | Guide | Description |
 |-------|-------------|
-| [`keychain-credentials/`](keychain-credentials/) | Complete guide to storing and using API credentials (AWS, MongoDB, Cloudflare) securely using macOS Keychain — includes `load-secrets.sh`, AI assistant rules, Git best practices, and a 30-point security checklist |
+| [`keychain-credentials/`](keychain-credentials/) | Complete guide to storing and using API credentials (AWS, MongoDB, Cloudflare) securely using macOS Keychain. Includes `load-secrets.sh`, AI assistant rules, Git best practices, and a 30-point security checklist |
 | [`remote-access/`](remote-access/) | Access a Mac remotely with built-in Screen Sharing: same Wi-Fi via `.local` hostname, or from anywhere via Tailscale (VPN On Demand, MagicDNS, node sharing across accounts). Covers sleep prevention, Auto Login limits (FileVault / MDM), and keeping the host reachable for weeks |
 
 ---
@@ -25,4 +25,4 @@ macOS-specific scripts and utilities — runnable with a single `bash <(curl ...
 
 - macOS 12 Monterey or later
 - Python 3.8+ (pre-installed on macOS)
-- `psutil` pip package — **auto-installed** by `run.sh` if missing
+- `psutil` pip package: **auto-installed** by `run.sh` if missing
