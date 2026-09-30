@@ -87,6 +87,7 @@ Think of it as a **personal runbook + public knowledge base**. Bookmark a note o
 | --- | --- | --- | --- |
 | [Mac System Info + Live Monitor](mac/mac-info/) | Full macOS snapshot: battery health, charging & power flow, CPU, memory, disk, network, thermals, top processes. Includes a live real-time dashboard (like `htop`) that refreshes every 3 s. | `bash <(curl -fsSL https://raw.githubusercontent.com/Tarunrj99/tech-notes/main/mac/mac-info/run.sh)` | stable |
 | [Secure API Credentials with Keychain](mac/keychain-credentials/) | Complete guide to storing AWS, MongoDB, and Cloudflare credentials in macOS Keychain instead of `.env` files. Includes `load-secrets.sh`, AI assistant rules, 30-point security checklist, and Git best practices. | [Open guide](mac/keychain-credentials/) | stable |
+| [Remote Access: Screen Sharing + Tailscale](mac/remote-access/) | Control one Mac from another over local Wi-Fi (built-in Screen Sharing) or from anywhere via Tailscale. Host setup (Remote Management, sleep prevention, `caffeinate`), VPN On Demand + MagicDNS, cross-account node sharing, Auto Login limits (FileVault / MDM), optional Exit Node. | [Open guide](mac/remote-access/) | stable |
 
 ### Tools
 
@@ -140,7 +141,8 @@ tech-notes/
 ├── mac/                               ← macOS scripts and utilities
 │   ├── README.md
 │   ├── mac-info/                      ← battery, power, CPU, memory, disk, network: static + live monitor
-│   └── keychain-credentials/          ← secure API credential management using Apple Keychain
+│   ├── keychain-credentials/          ← secure API credential management using Apple Keychain
+│   └── remote-access/                 ← Screen Sharing over local Wi-Fi + Tailscale from anywhere
 │
 └── tools/                             ← IDE rules, CLI configs, dev environment setups
     ├── README.md
